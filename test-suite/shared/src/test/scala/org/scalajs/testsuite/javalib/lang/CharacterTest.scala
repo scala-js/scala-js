@@ -17,6 +17,8 @@ package org.scalajs.testsuite.javalib.lang
  * whose implementation is in `project/UnicodeDataGen.scala`.
  */
 
+import scala.annotation.switch
+
 import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
@@ -913,228 +915,93 @@ class CharacterTest {
       assertEquals(Character.toTitleCase(ch), Character.toTitleCase(ch.toInt).toChar)
   }
 
-  @Test def toTitleCaseCodePointSpecialCases(): Unit = {
-    assertEquals(0x1fbc, Character.toTitleCase(0x1fb3))
-    assertEquals(0x1fcc, Character.toTitleCase(0x1fc3))
-    assertEquals(0x1ffc, Character.toTitleCase(0x1ff3))
-
-    assertEquals(0x1f88, Character.toTitleCase(0x1f80))
-    assertEquals(0x1f89, Character.toTitleCase(0x1f81))
-    assertEquals(0x1f8a, Character.toTitleCase(0x1f82))
-    assertEquals(0x1f8b, Character.toTitleCase(0x1f83))
-    assertEquals(0x1f8c, Character.toTitleCase(0x1f84))
-    assertEquals(0x1f8d, Character.toTitleCase(0x1f85))
-    assertEquals(0x1f8e, Character.toTitleCase(0x1f86))
-    assertEquals(0x1f8f, Character.toTitleCase(0x1f87))
-    assertEquals(0x1f88, Character.toTitleCase(0x1f88))
-    assertEquals(0x1f89, Character.toTitleCase(0x1f89))
-    assertEquals(0x1f8a, Character.toTitleCase(0x1f8a))
-    assertEquals(0x1f8b, Character.toTitleCase(0x1f8b))
-    assertEquals(0x1f8c, Character.toTitleCase(0x1f8c))
-    assertEquals(0x1f8d, Character.toTitleCase(0x1f8d))
-    assertEquals(0x1f8e, Character.toTitleCase(0x1f8e))
-    assertEquals(0x1f8f, Character.toTitleCase(0x1f8f))
-    assertEquals(0x1f98, Character.toTitleCase(0x1f90))
-    assertEquals(0x1f99, Character.toTitleCase(0x1f91))
-    assertEquals(0x1f9a, Character.toTitleCase(0x1f92))
-    assertEquals(0x1f9b, Character.toTitleCase(0x1f93))
-    assertEquals(0x1f9c, Character.toTitleCase(0x1f94))
-    assertEquals(0x1f9d, Character.toTitleCase(0x1f95))
-    assertEquals(0x1f9e, Character.toTitleCase(0x1f96))
-    assertEquals(0x1f9f, Character.toTitleCase(0x1f97))
-    assertEquals(0x1f98, Character.toTitleCase(0x1f98))
-    assertEquals(0x1f99, Character.toTitleCase(0x1f99))
-    assertEquals(0x1f9a, Character.toTitleCase(0x1f9a))
-    assertEquals(0x1f9b, Character.toTitleCase(0x1f9b))
-    assertEquals(0x1f9c, Character.toTitleCase(0x1f9c))
-    assertEquals(0x1f9d, Character.toTitleCase(0x1f9d))
-    assertEquals(0x1f9e, Character.toTitleCase(0x1f9e))
-    assertEquals(0x1f9f, Character.toTitleCase(0x1f9f))
-    assertEquals(0x1fa8, Character.toTitleCase(0x1fa0))
-    assertEquals(0x1fa9, Character.toTitleCase(0x1fa1))
-    assertEquals(0x1faa, Character.toTitleCase(0x1fa2))
-    assertEquals(0x1fab, Character.toTitleCase(0x1fa3))
-    assertEquals(0x1fac, Character.toTitleCase(0x1fa4))
-    assertEquals(0x1fad, Character.toTitleCase(0x1fa5))
-    assertEquals(0x1fae, Character.toTitleCase(0x1fa6))
-    assertEquals(0x1faf, Character.toTitleCase(0x1fa7))
-    assertEquals(0x1fa8, Character.toTitleCase(0x1fa8))
-    assertEquals(0x1fa9, Character.toTitleCase(0x1fa9))
-    assertEquals(0x1faa, Character.toTitleCase(0x1faa))
-    assertEquals(0x1fab, Character.toTitleCase(0x1fab))
-    assertEquals(0x1fac, Character.toTitleCase(0x1fac))
-    assertEquals(0x1fad, Character.toTitleCase(0x1fad))
-    assertEquals(0x1fae, Character.toTitleCase(0x1fae))
-    assertEquals(0x1faf, Character.toTitleCase(0x1faf))
+  /** Exhaustively test `toTitleCase(cp)` on all code points by comparing to
+   *  a reference implementation.
+   *
+   *  Attention: this test relies on a correct `toUpperCase` implementation.
+   *  If `UnicodeDataTest.toUpperCase` fails, fix that first.
+   *
+   *  In the event that new TitleCase mappings are added to Unicode in the
+   *  future, it could also start failing on newer JDK and/or Node.js versions.
+   *  In that case, the testing strategy should be revised. This is very
+   *  unlikely, as no new TitleCase code points were added since Unicode v1.1.
+   */
+  @Test def toTitleCaseExhaustive(): Unit = {
+    for (cp <- 0 to Character.MAX_CODE_POINT) {
+      val expected = toTitleCaseReferenceImplementation(cp)
+      val actual = Character.toTitleCase(cp)
+      assertEquals(Integer.toHexString(cp), expected, actual)
+    }
   }
 
-  @Test def toTitleCaseCodePointStringUpperCaseDiffCharacterTitleCase(): Unit = {
-    assumeTrue(
-        s"requires exactly the reference JDK version $ReferenceJDKVersion",
-        !executingInJVM || executingInJVMWithJDKIn(ReferenceJDKVersion to ReferenceJDKVersion))
+  /** Reference implementation of toTitleCase(cp).
+   *
+   *  It delegates to toUpperCase(cp) for all code points except a fixed,
+   *  generated list of exceptions.
+   */
+  private def toTitleCaseReferenceImplementation(cp: Int): Int = (cp: @switch) match {
+    // BEGIN GENERATED: [totitlecase-diff-touppercase-reference]
+    case 0x01c4 => 0x01c5 // Ǆ => ǅ instead of Ǆ
+    case 0x01c5 => 0x01c5 // ǅ => ǅ instead of Ǆ
+    case 0x01c6 => 0x01c5 // ǆ => ǅ instead of Ǆ
+    case 0x01c7 => 0x01c8 // Ǉ => ǈ instead of Ǉ
+    case 0x01c8 => 0x01c8 // ǈ => ǈ instead of Ǉ
+    case 0x01c9 => 0x01c8 // ǉ => ǈ instead of Ǉ
+    case 0x01ca => 0x01cb // Ǌ => ǋ instead of Ǌ
+    case 0x01cb => 0x01cb // ǋ => ǋ instead of Ǌ
+    case 0x01cc => 0x01cb // ǌ => ǋ instead of Ǌ
+    case 0x01f1 => 0x01f2 // Ǳ => ǲ instead of Ǳ
+    case 0x01f2 => 0x01f2 // ǲ => ǲ instead of Ǳ
+    case 0x01f3 => 0x01f2 // ǳ => ǲ instead of Ǳ
+    case 0x10d0 => 0x10d0 // ა => ა instead of Ა
+    case 0x10d1 => 0x10d1 // ბ => ბ instead of Ბ
+    case 0x10d2 => 0x10d2 // გ => გ instead of Გ
+    case 0x10d3 => 0x10d3 // დ => დ instead of Დ
+    case 0x10d4 => 0x10d4 // ე => ე instead of Ე
+    case 0x10d5 => 0x10d5 // ვ => ვ instead of Ვ
+    case 0x10d6 => 0x10d6 // ზ => ზ instead of Ზ
+    case 0x10d7 => 0x10d7 // თ => თ instead of Თ
+    case 0x10d8 => 0x10d8 // ი => ი instead of Ი
+    case 0x10d9 => 0x10d9 // კ => კ instead of Კ
+    case 0x10da => 0x10da // ლ => ლ instead of Ლ
+    case 0x10db => 0x10db // მ => მ instead of Მ
+    case 0x10dc => 0x10dc // ნ => ნ instead of Ნ
+    case 0x10dd => 0x10dd // ო => ო instead of Ო
+    case 0x10de => 0x10de // პ => პ instead of Პ
+    case 0x10df => 0x10df // ჟ => ჟ instead of Ჟ
+    case 0x10e0 => 0x10e0 // რ => რ instead of Რ
+    case 0x10e1 => 0x10e1 // ს => ს instead of Ს
+    case 0x10e2 => 0x10e2 // ტ => ტ instead of Ტ
+    case 0x10e3 => 0x10e3 // უ => უ instead of Უ
+    case 0x10e4 => 0x10e4 // ფ => ფ instead of Ფ
+    case 0x10e5 => 0x10e5 // ქ => ქ instead of Ქ
+    case 0x10e6 => 0x10e6 // ღ => ღ instead of Ღ
+    case 0x10e7 => 0x10e7 // ყ => ყ instead of Ყ
+    case 0x10e8 => 0x10e8 // შ => შ instead of Შ
+    case 0x10e9 => 0x10e9 // ჩ => ჩ instead of Ჩ
+    case 0x10ea => 0x10ea // ც => ც instead of Ც
+    case 0x10eb => 0x10eb // ძ => ძ instead of Ძ
+    case 0x10ec => 0x10ec // წ => წ instead of Წ
+    case 0x10ed => 0x10ed // ჭ => ჭ instead of Ჭ
+    case 0x10ee => 0x10ee // ხ => ხ instead of Ხ
+    case 0x10ef => 0x10ef // ჯ => ჯ instead of Ჯ
+    case 0x10f0 => 0x10f0 // ჰ => ჰ instead of Ჰ
+    case 0x10f1 => 0x10f1 // ჱ => ჱ instead of Ჱ
+    case 0x10f2 => 0x10f2 // ჲ => ჲ instead of Ჲ
+    case 0x10f3 => 0x10f3 // ჳ => ჳ instead of Ჳ
+    case 0x10f4 => 0x10f4 // ჴ => ჴ instead of Ჴ
+    case 0x10f5 => 0x10f5 // ჵ => ჵ instead of Ჵ
+    case 0x10f6 => 0x10f6 // ჶ => ჶ instead of Ჶ
+    case 0x10f7 => 0x10f7 // ჷ => ჷ instead of Ჷ
+    case 0x10f8 => 0x10f8 // ჸ => ჸ instead of Ჸ
+    case 0x10f9 => 0x10f9 // ჹ => ჹ instead of Ჹ
+    case 0x10fa => 0x10fa // ჺ => ჺ instead of Ჺ
+    case 0x10fd => 0x10fd // ჽ => ჽ instead of Ჽ
+    case 0x10fe => 0x10fe // ჾ => ჾ instead of Ჾ
+    case 0x10ff => 0x10ff // ჿ => ჿ instead of Ჿ
 
-    // BEGIN GENERATED: [totitlecase-code-point-diff-string-touppercase]
-    assertEquals(0x00df, Character.toTitleCase(0x00df)) // ß => ß
-    assertEquals(0x0149, Character.toTitleCase(0x0149)) // ŉ => ŉ
-    assertEquals(0x01c5, Character.toTitleCase(0x01c4)) // Ǆ => ǅ
-    assertEquals(0x01c5, Character.toTitleCase(0x01c5)) // ǅ => ǅ
-    assertEquals(0x01c5, Character.toTitleCase(0x01c6)) // ǆ => ǅ
-    assertEquals(0x01c8, Character.toTitleCase(0x01c7)) // Ǉ => ǈ
-    assertEquals(0x01c8, Character.toTitleCase(0x01c8)) // ǈ => ǈ
-    assertEquals(0x01c8, Character.toTitleCase(0x01c9)) // ǉ => ǈ
-    assertEquals(0x01cb, Character.toTitleCase(0x01ca)) // Ǌ => ǋ
-    assertEquals(0x01cb, Character.toTitleCase(0x01cb)) // ǋ => ǋ
-    assertEquals(0x01cb, Character.toTitleCase(0x01cc)) // ǌ => ǋ
-    assertEquals(0x01f0, Character.toTitleCase(0x01f0)) // ǰ => ǰ
-    assertEquals(0x01f2, Character.toTitleCase(0x01f1)) // Ǳ => ǲ
-    assertEquals(0x01f2, Character.toTitleCase(0x01f2)) // ǲ => ǲ
-    assertEquals(0x01f2, Character.toTitleCase(0x01f3)) // ǳ => ǲ
-    assertEquals(0x0390, Character.toTitleCase(0x0390)) // ΐ => ΐ
-    assertEquals(0x03b0, Character.toTitleCase(0x03b0)) // ΰ => ΰ
-    assertEquals(0x0587, Character.toTitleCase(0x0587)) // և => և
-    assertEquals(0x10d0, Character.toTitleCase(0x10d0)) // ა => ა
-    assertEquals(0x10d1, Character.toTitleCase(0x10d1)) // ბ => ბ
-    assertEquals(0x10d2, Character.toTitleCase(0x10d2)) // გ => გ
-    assertEquals(0x10d3, Character.toTitleCase(0x10d3)) // დ => დ
-    assertEquals(0x10d4, Character.toTitleCase(0x10d4)) // ე => ე
-    assertEquals(0x10d5, Character.toTitleCase(0x10d5)) // ვ => ვ
-    assertEquals(0x10d6, Character.toTitleCase(0x10d6)) // ზ => ზ
-    assertEquals(0x10d7, Character.toTitleCase(0x10d7)) // თ => თ
-    assertEquals(0x10d8, Character.toTitleCase(0x10d8)) // ი => ი
-    assertEquals(0x10d9, Character.toTitleCase(0x10d9)) // კ => კ
-    assertEquals(0x10da, Character.toTitleCase(0x10da)) // ლ => ლ
-    assertEquals(0x10db, Character.toTitleCase(0x10db)) // მ => მ
-    assertEquals(0x10dc, Character.toTitleCase(0x10dc)) // ნ => ნ
-    assertEquals(0x10dd, Character.toTitleCase(0x10dd)) // ო => ო
-    assertEquals(0x10de, Character.toTitleCase(0x10de)) // პ => პ
-    assertEquals(0x10df, Character.toTitleCase(0x10df)) // ჟ => ჟ
-    assertEquals(0x10e0, Character.toTitleCase(0x10e0)) // რ => რ
-    assertEquals(0x10e1, Character.toTitleCase(0x10e1)) // ს => ს
-    assertEquals(0x10e2, Character.toTitleCase(0x10e2)) // ტ => ტ
-    assertEquals(0x10e3, Character.toTitleCase(0x10e3)) // უ => უ
-    assertEquals(0x10e4, Character.toTitleCase(0x10e4)) // ფ => ფ
-    assertEquals(0x10e5, Character.toTitleCase(0x10e5)) // ქ => ქ
-    assertEquals(0x10e6, Character.toTitleCase(0x10e6)) // ღ => ღ
-    assertEquals(0x10e7, Character.toTitleCase(0x10e7)) // ყ => ყ
-    assertEquals(0x10e8, Character.toTitleCase(0x10e8)) // შ => შ
-    assertEquals(0x10e9, Character.toTitleCase(0x10e9)) // ჩ => ჩ
-    assertEquals(0x10ea, Character.toTitleCase(0x10ea)) // ც => ც
-    assertEquals(0x10eb, Character.toTitleCase(0x10eb)) // ძ => ძ
-    assertEquals(0x10ec, Character.toTitleCase(0x10ec)) // წ => წ
-    assertEquals(0x10ed, Character.toTitleCase(0x10ed)) // ჭ => ჭ
-    assertEquals(0x10ee, Character.toTitleCase(0x10ee)) // ხ => ხ
-    assertEquals(0x10ef, Character.toTitleCase(0x10ef)) // ჯ => ჯ
-    assertEquals(0x10f0, Character.toTitleCase(0x10f0)) // ჰ => ჰ
-    assertEquals(0x10f1, Character.toTitleCase(0x10f1)) // ჱ => ჱ
-    assertEquals(0x10f2, Character.toTitleCase(0x10f2)) // ჲ => ჲ
-    assertEquals(0x10f3, Character.toTitleCase(0x10f3)) // ჳ => ჳ
-    assertEquals(0x10f4, Character.toTitleCase(0x10f4)) // ჴ => ჴ
-    assertEquals(0x10f5, Character.toTitleCase(0x10f5)) // ჵ => ჵ
-    assertEquals(0x10f6, Character.toTitleCase(0x10f6)) // ჶ => ჶ
-    assertEquals(0x10f7, Character.toTitleCase(0x10f7)) // ჷ => ჷ
-    assertEquals(0x10f8, Character.toTitleCase(0x10f8)) // ჸ => ჸ
-    assertEquals(0x10f9, Character.toTitleCase(0x10f9)) // ჹ => ჹ
-    assertEquals(0x10fa, Character.toTitleCase(0x10fa)) // ჺ => ჺ
-    assertEquals(0x10fd, Character.toTitleCase(0x10fd)) // ჽ => ჽ
-    assertEquals(0x10fe, Character.toTitleCase(0x10fe)) // ჾ => ჾ
-    assertEquals(0x10ff, Character.toTitleCase(0x10ff)) // ჿ => ჿ
-    assertEquals(0x1e96, Character.toTitleCase(0x1e96)) // ẖ => ẖ
-    assertEquals(0x1e97, Character.toTitleCase(0x1e97)) // ẗ => ẗ
-    assertEquals(0x1e98, Character.toTitleCase(0x1e98)) // ẘ => ẘ
-    assertEquals(0x1e99, Character.toTitleCase(0x1e99)) // ẙ => ẙ
-    assertEquals(0x1e9a, Character.toTitleCase(0x1e9a)) // ẚ => ẚ
-    assertEquals(0x1f50, Character.toTitleCase(0x1f50)) // ὐ => ὐ
-    assertEquals(0x1f52, Character.toTitleCase(0x1f52)) // ὒ => ὒ
-    assertEquals(0x1f54, Character.toTitleCase(0x1f54)) // ὔ => ὔ
-    assertEquals(0x1f56, Character.toTitleCase(0x1f56)) // ὖ => ὖ
-    assertEquals(0x1f88, Character.toTitleCase(0x1f80)) // ᾀ => ᾈ
-    assertEquals(0x1f89, Character.toTitleCase(0x1f81)) // ᾁ => ᾉ
-    assertEquals(0x1f8a, Character.toTitleCase(0x1f82)) // ᾂ => ᾊ
-    assertEquals(0x1f8b, Character.toTitleCase(0x1f83)) // ᾃ => ᾋ
-    assertEquals(0x1f8c, Character.toTitleCase(0x1f84)) // ᾄ => ᾌ
-    assertEquals(0x1f8d, Character.toTitleCase(0x1f85)) // ᾅ => ᾍ
-    assertEquals(0x1f8e, Character.toTitleCase(0x1f86)) // ᾆ => ᾎ
-    assertEquals(0x1f8f, Character.toTitleCase(0x1f87)) // ᾇ => ᾏ
-    assertEquals(0x1f88, Character.toTitleCase(0x1f88)) // ᾈ => ᾈ
-    assertEquals(0x1f89, Character.toTitleCase(0x1f89)) // ᾉ => ᾉ
-    assertEquals(0x1f8a, Character.toTitleCase(0x1f8a)) // ᾊ => ᾊ
-    assertEquals(0x1f8b, Character.toTitleCase(0x1f8b)) // ᾋ => ᾋ
-    assertEquals(0x1f8c, Character.toTitleCase(0x1f8c)) // ᾌ => ᾌ
-    assertEquals(0x1f8d, Character.toTitleCase(0x1f8d)) // ᾍ => ᾍ
-    assertEquals(0x1f8e, Character.toTitleCase(0x1f8e)) // ᾎ => ᾎ
-    assertEquals(0x1f8f, Character.toTitleCase(0x1f8f)) // ᾏ => ᾏ
-    assertEquals(0x1f98, Character.toTitleCase(0x1f90)) // ᾐ => ᾘ
-    assertEquals(0x1f99, Character.toTitleCase(0x1f91)) // ᾑ => ᾙ
-    assertEquals(0x1f9a, Character.toTitleCase(0x1f92)) // ᾒ => ᾚ
-    assertEquals(0x1f9b, Character.toTitleCase(0x1f93)) // ᾓ => ᾛ
-    assertEquals(0x1f9c, Character.toTitleCase(0x1f94)) // ᾔ => ᾜ
-    assertEquals(0x1f9d, Character.toTitleCase(0x1f95)) // ᾕ => ᾝ
-    assertEquals(0x1f9e, Character.toTitleCase(0x1f96)) // ᾖ => ᾞ
-    assertEquals(0x1f9f, Character.toTitleCase(0x1f97)) // ᾗ => ᾟ
-    assertEquals(0x1f98, Character.toTitleCase(0x1f98)) // ᾘ => ᾘ
-    assertEquals(0x1f99, Character.toTitleCase(0x1f99)) // ᾙ => ᾙ
-    assertEquals(0x1f9a, Character.toTitleCase(0x1f9a)) // ᾚ => ᾚ
-    assertEquals(0x1f9b, Character.toTitleCase(0x1f9b)) // ᾛ => ᾛ
-    assertEquals(0x1f9c, Character.toTitleCase(0x1f9c)) // ᾜ => ᾜ
-    assertEquals(0x1f9d, Character.toTitleCase(0x1f9d)) // ᾝ => ᾝ
-    assertEquals(0x1f9e, Character.toTitleCase(0x1f9e)) // ᾞ => ᾞ
-    assertEquals(0x1f9f, Character.toTitleCase(0x1f9f)) // ᾟ => ᾟ
-    assertEquals(0x1fa8, Character.toTitleCase(0x1fa0)) // ᾠ => ᾨ
-    assertEquals(0x1fa9, Character.toTitleCase(0x1fa1)) // ᾡ => ᾩ
-    assertEquals(0x1faa, Character.toTitleCase(0x1fa2)) // ᾢ => ᾪ
-    assertEquals(0x1fab, Character.toTitleCase(0x1fa3)) // ᾣ => ᾫ
-    assertEquals(0x1fac, Character.toTitleCase(0x1fa4)) // ᾤ => ᾬ
-    assertEquals(0x1fad, Character.toTitleCase(0x1fa5)) // ᾥ => ᾭ
-    assertEquals(0x1fae, Character.toTitleCase(0x1fa6)) // ᾦ => ᾮ
-    assertEquals(0x1faf, Character.toTitleCase(0x1fa7)) // ᾧ => ᾯ
-    assertEquals(0x1fa8, Character.toTitleCase(0x1fa8)) // ᾨ => ᾨ
-    assertEquals(0x1fa9, Character.toTitleCase(0x1fa9)) // ᾩ => ᾩ
-    assertEquals(0x1faa, Character.toTitleCase(0x1faa)) // ᾪ => ᾪ
-    assertEquals(0x1fab, Character.toTitleCase(0x1fab)) // ᾫ => ᾫ
-    assertEquals(0x1fac, Character.toTitleCase(0x1fac)) // ᾬ => ᾬ
-    assertEquals(0x1fad, Character.toTitleCase(0x1fad)) // ᾭ => ᾭ
-    assertEquals(0x1fae, Character.toTitleCase(0x1fae)) // ᾮ => ᾮ
-    assertEquals(0x1faf, Character.toTitleCase(0x1faf)) // ᾯ => ᾯ
-    assertEquals(0x1fb2, Character.toTitleCase(0x1fb2)) // ᾲ => ᾲ
-    assertEquals(0x1fbc, Character.toTitleCase(0x1fb3)) // ᾳ => ᾼ
-    assertEquals(0x1fb4, Character.toTitleCase(0x1fb4)) // ᾴ => ᾴ
-    assertEquals(0x1fb6, Character.toTitleCase(0x1fb6)) // ᾶ => ᾶ
-    assertEquals(0x1fb7, Character.toTitleCase(0x1fb7)) // ᾷ => ᾷ
-    assertEquals(0x1fbc, Character.toTitleCase(0x1fbc)) // ᾼ => ᾼ
-    assertEquals(0x1fc2, Character.toTitleCase(0x1fc2)) // ῂ => ῂ
-    assertEquals(0x1fcc, Character.toTitleCase(0x1fc3)) // ῃ => ῌ
-    assertEquals(0x1fc4, Character.toTitleCase(0x1fc4)) // ῄ => ῄ
-    assertEquals(0x1fc6, Character.toTitleCase(0x1fc6)) // ῆ => ῆ
-    assertEquals(0x1fc7, Character.toTitleCase(0x1fc7)) // ῇ => ῇ
-    assertEquals(0x1fcc, Character.toTitleCase(0x1fcc)) // ῌ => ῌ
-    assertEquals(0x1fd2, Character.toTitleCase(0x1fd2)) // ῒ => ῒ
-    assertEquals(0x1fd3, Character.toTitleCase(0x1fd3)) // ΐ => ΐ
-    assertEquals(0x1fd6, Character.toTitleCase(0x1fd6)) // ῖ => ῖ
-    assertEquals(0x1fd7, Character.toTitleCase(0x1fd7)) // ῗ => ῗ
-    assertEquals(0x1fe2, Character.toTitleCase(0x1fe2)) // ῢ => ῢ
-    assertEquals(0x1fe3, Character.toTitleCase(0x1fe3)) // ΰ => ΰ
-    assertEquals(0x1fe4, Character.toTitleCase(0x1fe4)) // ῤ => ῤ
-    assertEquals(0x1fe6, Character.toTitleCase(0x1fe6)) // ῦ => ῦ
-    assertEquals(0x1fe7, Character.toTitleCase(0x1fe7)) // ῧ => ῧ
-    assertEquals(0x1ff2, Character.toTitleCase(0x1ff2)) // ῲ => ῲ
-    assertEquals(0x1ffc, Character.toTitleCase(0x1ff3)) // ῳ => ῼ
-    assertEquals(0x1ff4, Character.toTitleCase(0x1ff4)) // ῴ => ῴ
-    assertEquals(0x1ff6, Character.toTitleCase(0x1ff6)) // ῶ => ῶ
-    assertEquals(0x1ff7, Character.toTitleCase(0x1ff7)) // ῷ => ῷ
-    assertEquals(0x1ffc, Character.toTitleCase(0x1ffc)) // ῼ => ῼ
-    assertEquals(0xfb00, Character.toTitleCase(0xfb00)) // ﬀ => ﬀ
-    assertEquals(0xfb01, Character.toTitleCase(0xfb01)) // ﬁ => ﬁ
-    assertEquals(0xfb02, Character.toTitleCase(0xfb02)) // ﬂ => ﬂ
-    assertEquals(0xfb03, Character.toTitleCase(0xfb03)) // ﬃ => ﬃ
-    assertEquals(0xfb04, Character.toTitleCase(0xfb04)) // ﬄ => ﬄ
-    assertEquals(0xfb05, Character.toTitleCase(0xfb05)) // ﬅ => ﬅ
-    assertEquals(0xfb06, Character.toTitleCase(0xfb06)) // ﬆ => ﬆ
-    assertEquals(0xfb13, Character.toTitleCase(0xfb13)) // ﬓ => ﬓ
-    assertEquals(0xfb14, Character.toTitleCase(0xfb14)) // ﬔ => ﬔ
-    assertEquals(0xfb15, Character.toTitleCase(0xfb15)) // ﬕ => ﬕ
-    assertEquals(0xfb16, Character.toTitleCase(0xfb16)) // ﬖ => ﬖ
-    assertEquals(0xfb17, Character.toTitleCase(0xfb17)) // ﬗ => ﬗ
-    // END GENERATED: [totitlecase-code-point-diff-string-touppercase]
+    // END GENERATED: [totitlecase-diff-touppercase-reference]
+    case _ => Character.toUpperCase(cp)
   }
 
   @Test def codePointCountString(): Unit = {

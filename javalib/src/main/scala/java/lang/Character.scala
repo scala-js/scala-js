@@ -671,7 +671,7 @@ object Character {
   def toTitleCase(codePoint: scala.Int): scala.Int = {
     /* For almost all code points, this is the same as toUpperCase.
      * A generated, exhaustive list of the differences can be seen in
-     * CharacterTest.toTitleCaseCodePointStringUpperCaseDiffCharacterTitleCase().
+     * CharacterTest.toTitleCaseReferenceImplementation().
      * The following incantations efficiently deal with all of them.
      */
 

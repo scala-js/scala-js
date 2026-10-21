@@ -985,15 +985,16 @@ object UnicodeDataGen {
       computeToCaseCodePointDiffString("toLowerCase", toLowerCase(_), _.toLowerCase())
     val toUpperCaseCodePointDiffString =
       computeToCaseCodePointDiffString("toUpperCase", toUpperCase(_), _.toUpperCase())
-    val toTitleCaseCodePointDiffStringToUpperCase =
-      computeToCaseCodePointDiffString("toTitleCase", toTitleCase(_), _.toUpperCase())
+
+    val toTitleCaseDiffToUpperCaseReference =
+      computeToTitleCaseDiffToUpperCaseReference()
 
     patchFile("test-suite/shared/src/test/scala/org/scalajs/testsuite/javalib/lang/CharacterTest.scala")(
       "constants" -> Patch.Lines(constants),
       "all-zero-digits" -> Patch.ArrayElements(allZeroDigitCodePoints.map(formatCP(_))),
       "tolowercase-code-point-diff-string" -> Patch.Lines(toLowerCaseCodePointDiffString),
       "touppercase-code-point-diff-string" -> Patch.Lines(toUpperCaseCodePointDiffString),
-      "totitlecase-code-point-diff-string-touppercase" -> Patch.Lines(toTitleCaseCodePointDiffStringToUpperCase),
+      "totitlecase-diff-touppercase-reference" -> Patch.Lines(toTitleCaseDiffToUpperCaseReference),
     )
   }
 
@@ -1009,6 +1010,24 @@ object UnicodeDataGen {
 
       if (strToCase(cpStr) != caseCPStr)
         b += s"assertEquals(${formatCP(caseCP)}, Character.$methodName(${formatCP(cp)})) // $cpStr => $caseCPStr"
+    }
+
+    b.result()
+  }
+
+  private def computeToTitleCaseDiffToUpperCaseReference(): Array[String] = {
+    val b = Array.newBuilder[String]
+
+    for (cp <- 0 to MAX_CODE_POINT) {
+      val titleCaseCP = toTitleCase(cp)
+      val upperCaseCP = toUpperCase(cp)
+
+      if (titleCaseCP != upperCaseCP) {
+        val cpStr = Character.toString(cp)
+        val titleCaseCPStr = Character.toString(titleCaseCP)
+        val upperCaseCPStr = Character.toString(upperCaseCP)
+        b += s"case ${formatCP(cp)} => ${formatCP(titleCaseCP)} // $cpStr => $titleCaseCPStr instead of $upperCaseCPStr"
+      }
     }
 
     b.result()
