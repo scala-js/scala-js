@@ -2733,6 +2733,17 @@ object Build {
       testSuiteExCommonSettings(isJSTest = true),
       name := "Scala.js test suite ex",
       Compile / publishArtifact := false,
+
+      // Remove js/src/test/ if we have a Wasm-only module kind
+      Test / unmanagedSourceDirectories := {
+        val testDir = (Test / sourceDirectory).value
+        val prev = (Test / unmanagedSourceDirectories).value
+        val config = (Test / scalaJSLinkerConfig).value
+        if (config.moduleKind == ModuleKind.WasmModule)
+          prev.filterNot(_.relativeTo(testDir).isDefined)
+        else
+          prev
+      },
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOnLibrary.dependsOn(
       javalibExtDummies, jUnitRuntime, testBridge % "test", testSuite
   )
