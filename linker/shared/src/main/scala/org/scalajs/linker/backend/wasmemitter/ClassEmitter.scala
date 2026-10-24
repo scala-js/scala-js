@@ -74,7 +74,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     // Generate method implementations
     for (method <- clazz.methods) {
       if (method.body.isDefined)
-        genMethod(clazz, method)
+        genMethod(clazz, classInfo, method)
     }
 
     for (member <- clazz.topLevelImportDefs) {
@@ -1701,7 +1701,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
   }
 
-  private def genMethod(clazz: LinkedClass, method: MethodDef)(
+  private def genMethod(clazz: LinkedClass, classInfo: ClassInfo, method: MethodDef)(
       implicit ctx: WasmContext): Unit = {
     implicit val pos = method.pos
 
@@ -1747,13 +1747,15 @@ class ClassEmitter(coreSpec: CoreSpec) {
       method.resultType
     )
 
-    if (namespace == MemberNamespace.Public &&
-        (!isHijackedClass || ctx.hijackedClassesWithBoxes.contains(className))) {
+    val needsBridge = {
+      namespace == MemberNamespace.Public &&
+      (!isHijackedClass || ctx.hijackedClassesWithBoxes.contains(className)) &&
+      (methodName.isReflectiveProxy || classInfo.methodsReachedDynamically.contains(methodName))
+    }
+
+    if (needsBridge) {
       /* Also generate the bridge that is stored in the table entries. In table
        * entries, the receiver type is always `(ref any)`.
-       *
-       * TODO: generate this only when the method is actually referred to from
-       * at least one table.
        */
 
       val fb = new FunctionBuilder(

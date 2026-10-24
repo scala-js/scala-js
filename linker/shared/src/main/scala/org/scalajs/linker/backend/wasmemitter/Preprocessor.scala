@@ -51,7 +51,8 @@ object Preprocessor {
         specialInstanceTypes.getOrElse(clazz.className, 0),
         abstractMethodCalls.getOrElse(clazz.className, Set.empty),
         itableBucketAssignments.getOrElse(clazz.className, -1),
-        clazz.superClass.map(sup => classInfosBuilder(sup.name))
+        clazz.superClass.map(sup => classInfosBuilder(sup.name)),
+        clazz.interfaces.map(intf => classInfosBuilder(intf.name))
       )
       classInfosBuilder += clazz.className -> classInfo
 
@@ -141,7 +142,8 @@ object Preprocessor {
       specialInstanceTypes: Int,
       methodsCalledDynamically0: Set[MethodName],
       itableIdx: Int,
-      superClass: Option[ClassInfo]
+      superClass: Option[ClassInfo],
+      interfaces: List[ClassInfo]
   ): ClassInfo = {
     val className = clazz.className
     val kind = clazz.kind
@@ -247,6 +249,12 @@ object Preprocessor {
       }
     }
 
+    val methodsReachedDynamically: Set[MethodName] = {
+      methodsCalledDynamically0 ++
+      superClass.fold(Set.empty[MethodName])(_.methodsReachedDynamically) ++
+      interfaces.flatMap(_.methodsReachedDynamically)
+    }
+
     val (jsNativeMembers, wasmImportedMembers) = if (clazz.topLevelImportDefs.isEmpty) {
       // fast path
       (Map.empty[MethodName, JSNativeLoadSpec], Map.empty[MethodName, WasmImportedMethodDef])
@@ -278,6 +286,7 @@ object Preprocessor {
       specialInstanceTypes,
       resolvedMethodInfos,
       tableEntries,
+      methodsReachedDynamically,
       itableIdx
     )
   }
