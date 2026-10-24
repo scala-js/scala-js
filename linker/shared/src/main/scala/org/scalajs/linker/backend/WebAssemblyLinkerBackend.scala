@@ -23,6 +23,7 @@ import org.scalajs.linker._
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._
 import org.scalajs.linker.standard._
+import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 import org.scalajs.linker.backend.javascript.{ByteArrayWriter, SourceMapWriter}
 import org.scalajs.linker.backend.webassembly._
@@ -60,39 +61,33 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
 
   override def injectedIRFiles: Seq[IRFile] = emitter.injectedIRFiles
 
+  private val isWasmModule = coreSpec.moduleKind == ModuleKind.WasmModule
+
   def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
       implicit ec: ExecutionContext): Future[Report] = {
-    moduleSet.modules match {
-      case Nil =>
-        val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
-        for {
-          currentFilesList <- outputImpl.listFiles()
-          _ <- Future.traverse(currentFilesList) { f =>
-            outputImpl.delete(f)
-          }
-        } yield new ReportImpl(Nil)
-      case onlyModule :: Nil =>
-        emit(onlyModule, moduleSet.globalInfo, output, logger)
-      case modules =>
-        throw new UnsupportedOperationException(
-            "The WebAssembly backend does not support multiple modules. Found: " +
-            modules.map(_.id.id).mkString(", "))
+    val emitterResult = emitter.emit(moduleSet, logger)
+
+    val writerInputs = {
+      emitterResult.loaderContent.map { content =>
+        OutputWriter.OneFile(loaderJSFileName, true, () => ByteBuffer.wrap(content))
+      }.iterator ++ emitterResult.body.iterator.flatMap {
+        case (moduleID, emitterModule) => moduleWriterInput(moduleID, emitterModule)
+      }
     }
+
+    OutputWriter.write(writerInputs, output, config.maxConcurrentWrites,
+        skipContentCheck = false).map(_ => report(moduleSet))
   }
 
-  private def emit(onlyModule: ModuleSet.Module, globalInfo: LinkedGlobalInfo,
-      output: OutputDirectory, logger: Logger)(
-      implicit ec: ExecutionContext): Future[Report] = {
-    val moduleID = onlyModule.id.id
+  private def moduleWriterInput(moduleID: ModuleID,
+      emitterModule: Emitter.Result.Module): Iterator[OutputWriter.Input] = {
 
-    val emitterResult = emitter.emit(onlyModule, globalInfo, logger)
-    val wasmModule = emitterResult.wasmModule
+    val wasmModule = emitterModule.wasmModule
 
-    val watFileName = s"$moduleID.wat"
-    val wasmFileName = s"$moduleID.wasm"
+    val watFileName = s"${moduleID.id}.wat"
+    val wasmFileName = this.wasmFileName(moduleID)
     val sourceMapFileName = s"$wasmFileName.map"
-    val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID)
-    val isWasmModule = coreSpec.moduleKind == ModuleKind.WasmModule
+    val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID.id)
 
     import OutputWriter.{OneFile, TwoFiles}
 
@@ -130,27 +125,26 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
           () => BinaryWriter.write(wasmModule, emitDebugInfo))
     }
 
-    val loaderInput = emitterResult.loaderContent.map { content =>
-      OneFile(loaderJSFileName, true, () => ByteBuffer.wrap(content))
-    }
-
-    val jsFileInput = emitterResult.jsFileContent.map { content =>
+    val jsFileInput = emitterModule.jsFileContent.map { content =>
       OneFile(jsFileName, true, () => ByteBuffer.wrap(content))
     }
 
-    val writerInputs =
-      maybeWat ++ Iterator(mainInput) ++ loaderInput.iterator ++ jsFileInput.iterator
-
-    val reportModule = new ReportImpl.ModuleImpl(
-      moduleID,
-      if (isWasmModule) wasmFileName else jsFileName,
-      None,
-      coreSpec.moduleKind
-    )
-
-    val report = new ReportImpl(List(reportModule))
-
-    OutputWriter.write(writerInputs, output, config.maxConcurrentWrites,
-        skipContentCheck = false).map(_ => report)
+    maybeWat ++ Iterator(mainInput) ++ jsFileInput.iterator
   }
+
+  private def report(moduleSet: ModuleSet): Report = {
+    val publicModules = for {
+      module <- moduleSet.modules if module.public
+    } yield {
+      val moduleFileName =
+        if (isWasmModule) wasmFileName(module.id)
+        else OutputPatternsImpl.jsFile(config.outputPatterns, module.id.id)
+
+      new ReportImpl.ModuleImpl(module.id.id, moduleFileName, None, coreSpec.moduleKind)
+    }
+
+    new ReportImpl(publicModules)
+  }
+
+  private def wasmFileName(moduleID: ModuleID) = s"${moduleID.id}.wasm"
 }
