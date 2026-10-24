@@ -152,10 +152,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
    *  of `typeData`.
    */
   def genPreClasses()(implicit ctx: WasmContext): Unit = {
-    genPreMainRecTypeDefinitions()
-    ctx.moduleBuilder.addRecTypeBuilder(ctx.mainRecType)
-    genCoreTypesInRecType()
-
     if (hasJSInterop)
       genJSImports()
 
@@ -172,7 +168,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
 
   // --- Type definitions ---
 
-  private def genPreMainRecTypeDefinitions()(implicit ctx: WasmContext): Unit = {
+  def genPreMainRecTypeDefinitions()(implicit ctx: WasmContext): Unit = {
     val b = ctx.moduleBuilder
 
     def genUnderlyingArrayType(id: TypeID, elemType: StorageType): Unit =
@@ -189,9 +185,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genUnderlyingArrayType(genTypeID.externrefArray, RefType.externref)
   }
 
-  private def genCoreTypesInRecType()(implicit ctx: WasmContext): Unit = {
+  def genCoreTypesInRecType(mainRecType: ModuleBuilder.RecTypeBuilder): Unit = {
     def genCoreType(id: TypeID, compositeType: CompositeType): Unit =
-      ctx.mainRecType.addSubType(id, OriginalName(id.toString()), compositeType)
+      mainRecType.addSubType(id, OriginalName(id.toString()), compositeType)
 
     genCoreType(
       genTypeID.cloneFunctionType,
@@ -217,7 +213,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     )
 
     if (useCustomDescriptors) {
-      ctx.mainRecType.addSubType(
+      mainRecType.addSubType(
         SubType(
           genTypeID.typeDataDescribed,
           OriginalName(genTypeID.typeDataDescribed.toString()),
@@ -230,7 +226,7 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       )
     }
 
-    ctx.mainRecType.addSubType(
+    mainRecType.addSubType(
       SubType(
         genTypeID.typeData,
         OriginalName(genTypeID.typeData.toString()),

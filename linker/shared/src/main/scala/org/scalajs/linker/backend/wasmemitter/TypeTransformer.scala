@@ -30,7 +30,7 @@ object TypeTransformer {
    *  This method cannot be used for `void` and `nothing`, since they are not
    *  valid types for fields.
    */
-  def transformFieldType(tpe: Type)(implicit ctx: WasmContext): watpe.Type =
+  def transformFieldType(tpe: Type)(implicit ctx: WasmBaseContext): watpe.Type =
     transformSingleType(tpe)
 
   /** Transforms an IR type for a parameter definition.
@@ -47,7 +47,7 @@ object TypeTransformer {
    *  value of such a parameter is always unreachable. It is up to the reading
    *  codegen to handle this case.
    */
-  def transformParamType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
+  def transformParamType(tpe: Type)(implicit ctx: WasmBaseContext): watpe.Type = {
     tpe match {
       case NothingType   => watpe.Int32
       case _: RecordType => throw new AssertionError(s"Unexpected $tpe for parameter")
@@ -69,7 +69,7 @@ object TypeTransformer {
    *  @see
    *    https://webassembly.github.io/spec/core/syntax/types.html#result-types
    */
-  def transformResultType(tpe: Type)(implicit ctx: WasmContext): List[watpe.Type] = {
+  def transformResultType(tpe: Type)(implicit ctx: WasmBaseContext): List[watpe.Type] = {
     tpe match {
       case VoidType           => Nil
       case NothingType        => Nil
@@ -79,7 +79,7 @@ object TypeTransformer {
   }
 
   /** Transforms an IR type at the boundary of `@WasmImport`/`@WasmExport`. */
-  def transformWasmInteropParamType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
+  def transformWasmInteropParamType(tpe: Type)(implicit ctx: WasmBaseContext): watpe.Type = {
     tpe match {
       case tpe: PrimType =>
         transformPrimType(tpe)
@@ -91,7 +91,7 @@ object TypeTransformer {
   }
 
   /** Transforms an IR result type at the boundary of `@WasmImport`/`@WasmExport`. */
-  def transformWasmInteropResultType(tpe: Type)(implicit ctx: WasmContext): List[watpe.Type] = {
+  def transformWasmInteropResultType(tpe: Type)(implicit ctx: WasmBaseContext): List[watpe.Type] = {
     tpe match {
       case VoidType => Nil
       case _        => transformWasmInteropParamType(tpe) :: Nil
@@ -106,7 +106,7 @@ object TypeTransformer {
    *  Likewise, it cannot be used for `RecordType`s, since they must be
    *  flattened into several Wasm types.
    */
-  def transformSingleType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
+  def transformSingleType(tpe: Type)(implicit ctx: WasmBaseContext): watpe.Type = {
     tpe match {
       case AnyType                               => watpe.RefType.anyref
       case AnyNotNullType                        => watpe.RefType.any
@@ -128,7 +128,7 @@ object TypeTransformer {
   }
 
   def transformClassType(className: ClassName, nullable: Boolean, exact: Boolean)(
-      implicit ctx: WasmContext): watpe.RefType = {
+      implicit ctx: WasmBaseContext): watpe.RefType = {
     val heapType: watpe.HeapType = ctx.getClassInfoOption(className) match {
       case Some(info) =>
         if (className == BoxedStringClass)
@@ -149,7 +149,7 @@ object TypeTransformer {
     watpe.RefType(nullable, heapType)
   }
 
-  def transformPrimType(tpe: PrimType)(implicit ctx: WasmContext): watpe.Type = {
+  def transformPrimType(tpe: PrimType)(implicit ctx: WasmBaseContext): watpe.Type = {
     tpe match {
       case UndefType   => watpe.RefType.any
       case BooleanType => watpe.Int32
@@ -170,7 +170,7 @@ object TypeTransformer {
   }
 
   def transformTableFunctionType(normalizedName: MethodName)(
-      implicit ctx: WasmContext): watpe.SubType = {
+      implicit ctx: WasmBaseContext): watpe.SubType = {
     assert(normalizedName.simpleName == normalizedSimpleMethodName)
 
     val typeID = genTypeID.forTableFunctionType(normalizedName)
@@ -196,7 +196,7 @@ object TypeTransformer {
   }
 
   def transformClosureDataStructType(captureParamTypes: List[Type])(
-      implicit ctx: WasmContext): watpe.StructType = {
+      implicit ctx: WasmBaseContext): watpe.StructType = {
     val fields: List[watpe.StructField] = {
       for ((tpe, i) <- captureParamTypes.zipWithIndex) yield {
         watpe.StructField(
@@ -211,7 +211,7 @@ object TypeTransformer {
   }
 
   def transformTypedClosureType(tpe: ClosureType)(
-      implicit ctx: WasmContext): (watpe.SubType, watpe.SubType) = {
+      implicit ctx: WasmBaseContext): (watpe.SubType, watpe.SubType) = {
     assert(!tpe.nullable)
 
     val tpeNameString = tpe.show()
@@ -245,7 +245,7 @@ object TypeTransformer {
     (funSubType, structSubType)
   }
 
-  def inferTypeFromTypeRef(typeRef: TypeRef)(implicit ctx: WasmContext): Type = typeRef match {
+  def inferTypeFromTypeRef(typeRef: TypeRef)(implicit ctx: WasmBaseContext): Type = typeRef match {
     case PrimRef(tpe) =>
       tpe
     case ClassRef(className) =>
