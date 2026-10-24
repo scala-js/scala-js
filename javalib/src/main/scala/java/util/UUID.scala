@@ -136,7 +136,7 @@ object UUID {
 
   // Typed as `Random` so that the IR typechecks when SecureRandom is not available
   private lazy val csprng: Random = new java.security.SecureRandom()
-  private lazy val randomUUIDBuffer: Array[Byte] = new Array[Byte](16)
+  private val randomUUIDBuffer: Array[Byte] = new Array[Byte](16)
 
   def randomUUID(): UUID = {
     val buffer = randomUUIDBuffer // local copy
@@ -145,7 +145,7 @@ object UUID {
      * and therefore it allows to perform a unique call to the underlying
      * secure RNG.
      */
-    csprng.nextBytes(randomUUIDBuffer)
+    csprng.nextBytes(buffer)
 
     @inline def longFromBuffer(i: Int): Long = {
       @inline def b(j: Int): Long = (buffer(i + j).toLong & 0xffL) << (8 * j)
