@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -14,6 +14,7 @@ package scala.collection.immutable
 
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}
+import scala.collection.generic.CommonErrors
 
 /** `NumericRange` is a more generic version of the
   *  `Range` class which works with arbitrary types.
@@ -104,7 +105,8 @@ sealed class NumericRange[T](
 
   @throws[IndexOutOfBoundsException]
   def apply(idx: Int): T = {
-    if (idx < 0 || idx >= length) throw new IndexOutOfBoundsException(s"$idx is out of bounds (min 0, max ${length - 1})")
+    if (idx < 0 || idx >= length)
+      throw CommonErrors.indexOutOfBounds(index = idx, max = length - 1)
     else locationAfterN(idx)
   }
 
@@ -117,6 +119,38 @@ sealed class NumericRange[T](
       count += 1
     }
   }
+
+  private[this] def indexOfTyped(elem: T, from: Int): Int =
+    posOf(elem) match {
+      case pos if pos >= from => pos
+      case _                  => -1
+    }
+
+  final override def indexOf[B >: T](elem: B, from: Int): Int =
+    try indexOfTyped(elem.asInstanceOf[T], from)
+    catch { case _: ClassCastException => super.indexOf(elem, from) }
+
+  private[this] def lastIndexOfTyped(elem: T, end: Int): Int =
+    posOf(elem) match {
+      case pos if pos <= end => pos
+      case _                 => -1
+    }
+
+  final override def lastIndexOf[B >: T](elem: B, end: Int = length - 1): Int =
+    try lastIndexOfTyped(elem.asInstanceOf[T], end)
+    catch { case _: ClassCastException => super.lastIndexOf(elem, end) }
+
+  private[this] def posOf(i: T): Int =
+      /*
+      If i is in this NumericRange, its position can simply be calculated by taking the amount of values up till i.
+      NumericRange.count does this in an most efficient manner.
+      Note that the contains() method throws an exception if the range has more than Int.MaxValue elements, but so did
+      the original indexOf / lastIndexOf functions, so no functionality changed. */
+    if (contains(i)) {
+      /* Because of zero indexing, the count is always one higher than the index. This can be simply solved by setting
+      isInclusive = false. */
+      NumericRange.count(this.start, i, this.step, isInclusive = false)
+    } else -1
 
   // TODO: these private methods are straight copies from Range, duplicated
   // to guard against any (most likely illusory) performance drop.  They should
@@ -448,7 +482,7 @@ object NumericRange {
 
   @SerialVersionUID(3L)
   class Inclusive[T](start: T, end: T, step: T)(implicit num: Integral[T])
-    extends NumericRange(start, end, step, true) {
+    extends NumericRange(start, end, step, isInclusive = true) {
     override def copy(start: T, end: T, step: T): Inclusive[T] =
       NumericRange.inclusive(start, end, step)
 
@@ -457,7 +491,7 @@ object NumericRange {
 
   @SerialVersionUID(3L)
   class Exclusive[T](start: T, end: T, step: T)(implicit num: Integral[T])
-    extends NumericRange(start, end, step, false) {
+    extends NumericRange(start, end, step, isInclusive = false) {
     override def copy(start: T, end: T, step: T): Exclusive[T] =
       NumericRange(start, end, step)
 

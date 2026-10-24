@@ -1,10 +1,14 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2013, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
+/*
+ * Scala (https://www.scala-lang.org)
+ *
+ * Copyright EPFL and Lightbend, Inc. dba Akka
+ *
+ * Licensed under Apache License 2.0
+ * (http://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
 
 package scala
 package compat
@@ -41,7 +45,7 @@ object Platform {
     * @throws java.lang.ArrayStoreException If either `src` or `dest` are not of type
     *                [java.lang.Array]; or if the element type of `src` is not
     *                compatible with that of `dest`.
-    * @throws java.lang.IndexOutOfBoundsException If either srcPos` or `destPos` are
+    * @throws java.lang.IndexOutOfBoundsException If either `srcPos` or `destPos` are
     *                outside of the bounds of their respective arrays; or if `length`
     *                is negative; or if there are less than `length` elements available
     *                after `srcPos` or `destPos` in `src` and `dest` respectively.

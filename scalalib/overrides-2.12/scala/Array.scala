@@ -1,19 +1,23 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2013, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
+/*
+ * Scala (https://www.scala-lang.org)
+ *
+ * Copyright EPFL and Lightbend, Inc. dba Akka
+ *
+ * Licensed under Apache License 2.0
+ * (http://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
 
 package scala
 
 import scala.collection.generic._
-import scala.collection.{ mutable, immutable }
-import mutable.{ ArrayBuilder, ArraySeq }
-import java.lang.System.arraycopy
-import scala.reflect.ClassTag
-import scala.runtime.ScalaRunTime.{ array_apply, array_update }
+import scala.collection.{immutable, mutable}
+import mutable.{ArrayBuilder, ArraySeq}
+import scala.reflect.{ClassTag, classTag}
+import scala.runtime.ScalaRunTime
+import scala.runtime.ScalaRunTime.{array_apply, array_update}
 
 /** Contains a fallback builder for arrays when the element type
  *  does not have a class tag. In that case a generic array is built.
@@ -45,9 +49,10 @@ class FallbackArrayBuilding {
  *  `Array(1, 2)`, `Array(0, 0)` and `Array(1, 2, 0, 0)`.
  *
  *  @author Martin Odersky
- *  @version 1.0
+ *  @since  1.0
  */
 object Array extends FallbackArrayBuilding {
+
   def emptyBooleanArray = EmptyArrays.emptyBooleanArray
   def emptyByteArray    = EmptyArrays.emptyByteArray
   def emptyCharArray    = EmptyArrays.emptyCharArray
@@ -56,6 +61,9 @@ object Array extends FallbackArrayBuilding {
   def emptyIntArray     = EmptyArrays.emptyIntArray
   def emptyLongArray    = EmptyArrays.emptyLongArray
   def emptyShortArray   = EmptyArrays.emptyShortArray
+
+  private[scala] //this is only private because of binary compatability
+  def emptyUnitArray    = EmptyArrays.emptyUnitArray
   def emptyObjectArray  = EmptyArrays.emptyObjectArray
 
   private object EmptyArrays {
@@ -67,6 +75,7 @@ object Array extends FallbackArrayBuilding {
     val emptyIntArray     = new Array[Int](0)
     val emptyLongArray    = new Array[Long](0)
     val emptyShortArray   = new Array[Short](0)
+    val emptyUnitArray    = new Array[Unit](0)
     val emptyObjectArray  = new Array[Object](0)
   }
 
@@ -117,14 +126,15 @@ object Array extends FallbackArrayBuilding {
   def copy(src: AnyRef, srcPos: Int, dest: AnyRef, destPos: Int, length: Int) {
     val srcClass = src.getClass
     if (srcClass.isArray && dest.getClass.isAssignableFrom(srcClass))
-      arraycopy(src, srcPos, dest, destPos, length)
+      java.lang.System.arraycopy(src, srcPos, dest, destPos, length)
     else
       slowcopy(src, srcPos, dest, destPos, length)
   }
 
   /** Returns an array of length 0 */
-  def empty[T: ClassTag]: Array[T] = new Array[T](0)
-
+  def empty[T: ClassTag]: Array[T] =  {
+    implicitly[ClassTag[T]].emptyArray
+  }
   /** Creates an array with given elements.
    *
    *  @param xs the elements to put in the array
@@ -133,10 +143,20 @@ object Array extends FallbackArrayBuilding {
   // Subject to a compiler optimization in Cleanup.
   // Array(e0, ..., en) is translated to { val a = new Array(3); a(i) = ei; a }
   def apply[T: ClassTag](xs: T*): Array[T] = {
-    val array = new Array[T](xs.length)
-    var i = 0
-    for (x <- xs.iterator) { array(i) = x; i += 1 }
-    array
+    val len = xs.length
+    xs match {
+      case wa: mutable.WrappedArray[_] if wa.elemTag == classTag[T] =>
+        // We get here in test/files/run/sd760a.scala, `Array[T](t)` for
+        // a specialized type parameter `T`. While we still pay for two
+        // copies of the array it is better than before when we also boxed
+        // each element when populating the result.
+        ScalaRunTime.array_clone(wa.array).asInstanceOf[Array[T]]
+      case _ =>
+        val array = new Array[T](len)
+        var i = 0
+        for (x <- xs.iterator) { array(i) = x; i += 1 }
+        array
+    }
   }
 
   /** Creates an array of `Boolean` objects */
@@ -275,14 +295,17 @@ object Array extends FallbackArrayBuilding {
    *  `elem`.
    */
   def fill[T: ClassTag](n: Int)(elem: => T): Array[T] = {
-    val b = newBuilder[T]
-    b.sizeHint(n)
-    var i = 0
-    while (i < n) {
-      b += elem
-      i += 1
+    if (n <= 0) {
+      empty[T]
+    } else {
+      val array = new Array[T](n)
+      var i = 0
+      while (i < n) {
+        array(i) = elem
+        i += 1
+      }
+      array
     }
-    b.result()
   }
 
   /** Returns a two-dimensional array that contains the results of some element
@@ -497,10 +520,31 @@ object Array extends FallbackArrayBuilding {
  *  `WrappedArray`.
  *
  *  @author Martin Odersky
- *  @version 1.0
- *  @see [[http://www.scala-lang.org/files/archive/spec/2.11/ Scala Language Specification]], for in-depth information on the transformations the Scala compiler makes on Arrays (Sections 6.6 and 6.15 respectively.)
+ *  @since  1.0
+ *  @see [[http://www.scala-lang.org/files/archive/spec/2.12/ Scala Language Specification]], for in-depth information on the transformations the Scala compiler makes on Arrays (Sections 6.6 and 6.15 respectively.)
  *  @see [[http://docs.scala-lang.org/sips/completed/scala-2-8-arrays.html "Scala 2.8 Arrays"]] the Scala Improvement Document detailing arrays since Scala 2.8.
  *  @see [[http://docs.scala-lang.org/overviews/collections/arrays.html "The Scala 2.8 Collections' API"]] section on `Array` by Martin Odersky for more information.
+ *  @hideImplicitConversion scala.Predef.booleanArrayOps
+ *  @hideImplicitConversion scala.Predef.byteArrayOps
+ *  @hideImplicitConversion scala.Predef.charArrayOps
+ *  @hideImplicitConversion scala.Predef.doubleArrayOps
+ *  @hideImplicitConversion scala.Predef.floatArrayOps
+ *  @hideImplicitConversion scala.Predef.intArrayOps
+ *  @hideImplicitConversion scala.Predef.longArrayOps
+ *  @hideImplicitConversion scala.Predef.refArrayOps
+ *  @hideImplicitConversion scala.Predef.shortArrayOps
+ *  @hideImplicitConversion scala.Predef.unitArrayOps
+ *  @hideImplicitConversion scala.LowPriorityImplicits.wrapRefArray
+ *  @hideImplicitConversion scala.LowPriorityImplicits.wrapIntArray
+ *  @hideImplicitConversion scala.LowPriorityImplicits.wrapDoubleArray
+ *  @hideImplicitConversion scala.LowPriorityImplicits.wrapLongArray
+ *  @hideImplicitConversion scala.LowPriorityImplicits.wrapFloatArray
+ *  @hideImplicitConversion scala.LowPriorityImplicits.wrapCharArray
+ *  @hideImplicitConversion scala.LowPriorityImplicits.wrapByteArray
+ *  @hideImplicitConversion scala.LowPriorityImplicits.wrapShortArray
+ *  @hideImplicitConversion scala.LowPriorityImplicits.wrapBooleanArray
+ *  @hideImplicitConversion scala.LowPriorityImplicits.wrapUnitArray
+ *  @hideImplicitConversion scala.LowPriorityImplicits.genericWrapArray
  *  @define coll array
  *  @define Coll `Array`
  *  @define orderDependent

@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -80,17 +80,16 @@ private[scala] abstract class JSUniquenessCache[V]
 /** This is private so it won't appear in the library API, but
   * abstracted to offer some hope of reusability.  */
 /* DELETED for Scala.js
-private[scala] abstract class UniquenessCache[K >: js.String, V >: Null]
+private[scala] abstract class UniquenessCache[K, V >: Null]
 {
-
   import java.lang.ref.WeakReference
   import java.util.WeakHashMap
   import java.util.concurrent.locks.ReentrantReadWriteLock
 
-  private[this] val rwl = new ReentrantReadWriteLock()
-  private[this] val rlock = rwl.readLock
-  private[this] val wlock = rwl.writeLock
-  private[this] val map = new WeakHashMap[K, WeakReference[V]]
+  private val rwl = new ReentrantReadWriteLock()
+  private val rlock = rwl.readLock
+  private val wlock = rwl.writeLock
+  private val map = new WeakHashMap[K, WeakReference[V]]
 
   protected def valueFromKey(k: K): V
   protected def keyFromValue(v: V): Option[K]

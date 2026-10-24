@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -19,9 +19,6 @@ package util.control
  *  [[scala.sys.SystemProperties]].
  *
  *  @note Since JDK 1.7, a similar effect can be achieved with `class Ex extends Throwable(..., writableStackTrace = false)`
- *
- *  @author   Paul Phillips
- *  @since    2.8
  */
 trait NoStackTrace extends Throwable {
   override def fillInStackTrace(): Throwable =
@@ -32,8 +29,8 @@ trait NoStackTrace extends Throwable {
 object NoStackTrace {
   final def noSuppression = _noSuppression
 
-  // two-stage init to make checkinit happy, since sys.SystemProperties.noTraceSupression.value calls back into NoStackTrace.noSuppression
-  final private var _noSuppression = false
+  // two-stage init to make checkinit happy, since sys.SystemProperties.noTraceSuppression.value calls back into NoStackTrace.noSuppression
+  final private[this] var _noSuppression = false
   // !!! Disabled in Scala.js because SystemProperties is not supported
   //_noSuppression = System.getProperty("scala.control.noTraceSuppression", "").equalsIgnoreCase("true")
 }

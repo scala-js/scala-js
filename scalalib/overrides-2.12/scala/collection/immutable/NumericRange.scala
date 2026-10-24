@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -39,6 +39,7 @@ package immutable
  *  @define mayNotTerminateInf
  *  @define willNotTerminateInf
  */
+@SerialVersionUID(-5580158174769432538L)
 abstract class NumericRange[T]
   (val start: T, val end: T, val step: T, val isInclusive: Boolean)
   (implicit num: Integral[T])
@@ -294,7 +295,7 @@ object NumericRange {
       // Numbers may be big.
       val one = num.one
       val limit = num.fromInt(Int.MaxValue)
-      def check(t: T): T = 
+      def check(t: T): T =
         if (num.gt(t, limit)) throw new IllegalArgumentException("More than Int.MaxValue elements.")
         else t
       // If the range crosses zero, it might overflow when subtracted
@@ -345,6 +346,7 @@ object NumericRange {
     }
   }
 
+  @SerialVersionUID(-5986512874781685419L)
   class Inclusive[T](start: T, end: T, step: T)(implicit num: Integral[T])
   extends NumericRange(start, end, step, true) {
     def copy(start: T, end: T, step: T): Inclusive[T] =
@@ -353,6 +355,7 @@ object NumericRange {
     def exclusive: Exclusive[T] = NumericRange(start, end, step)
   }
 
+  @SerialVersionUID(-7058074814271573640L)
   class Exclusive[T](start: T, end: T, step: T)(implicit num: Integral[T])
   extends NumericRange(start, end, step, false) {
     def copy(start: T, end: T, step: T): Exclusive[T] =
@@ -375,4 +378,3 @@ object NumericRange {
   )
 
 }
-

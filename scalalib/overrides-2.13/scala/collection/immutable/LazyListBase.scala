@@ -15,9 +15,9 @@ package scala.collection.immutable
 /**
  * Base class for [[LazyList]] to split out code that uses concurrency utilities that are not available on Scala.js.
  */
-abstract class LazyListBase[+A] private[immutable] (initialTail: AnyRef) extends scala.collection.AbstractSeq[A] with Serializable {
+abstract class LazyListBase[+A] private[immutable] (initialTail: AnyRef) extends AbstractSeq[A] with Serializable {
   /** See [[LazyList._head]] for the possible states of this field. */
-  @volatile private var _tail: AnyRef /* () => LazyList[A] | Thread | InRace | LazyList[A] | Null */ = initialTail
+  @volatile private var _tail: AnyRef /* () => LazyList[A] | Thread | InRace | LazyList[A] */ = initialTail
 
   private[immutable] def rawTail: AnyRef = _tail
 
