@@ -87,15 +87,34 @@ final class Emitter(config: Emitter.Config) {
     val topLevelExports = module.topLevelExports
     val moduleInitializers = module.initializers.toList
 
+    val preprocessResult = Preprocessor.preprocess(coreSpec, sortedClasses, topLevelExports)
+
     val coreLib = new CoreWasmLib(coreSpec, globalInfo)
 
-    implicit val ctx: WasmContext =
-      Preprocessor.preprocess(coreSpec, coreLib, sortedClasses, topLevelExports)
+    // Build the main rec type.
+    val mainRecTypeContext = new WasmMainRecTypeContext(coreSpec, coreLib, preprocessResult)
+
+    coreLib.genCoreTypesInRecType(mainRecTypeContext.mainRecType)
+    sortedClasses.foreach(classEmitter.genClassType(_)(mainRecTypeContext))
+    classEmitter.genArrayClassTypes()(mainRecTypeContext)
+
+    // Build everything else.
+    implicit val ctx: WasmContext = new WasmContext(
+      coreSpec,
+      coreLib,
+      preprocessResult,
+      mainRecTypeContext.generatedTableFunctionTypes,
+      mainRecTypeContext.generatedTypedClosureTypes
+    )
+
+    coreLib.genPreMainRecTypeDefinitions()
+
+    ctx.moduleBuilder.addRecTypeBuilder(mainRecTypeContext.mainRecType)
 
     coreLib.genPreClasses()
     sortedClasses.foreach(classEmitter.genClassDef(_))
     topLevelExports.foreach(classEmitter.genTopLevelExport(_))
-    classEmitter.genArrayClasses()
+    classEmitter.genArrayClassDefs()
     coreLib.genPostClasses()
 
     genStartFunction(sortedClasses, moduleInitializers, topLevelExports)
