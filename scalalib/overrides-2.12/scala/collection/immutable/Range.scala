@@ -1,11 +1,14 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2013, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
-
+/*
+ * Scala (https://www.scala-lang.org)
+ *
+ * Copyright EPFL and Lightbend, Inc. dba Akka
+ *
+ * Licensed under Apache License 2.0
+ * (http://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
 
 package scala
 package collection.immutable
@@ -44,7 +47,6 @@ import scala.collection.parallel.immutable.ParRange
  *
  *  @author Martin Odersky
  *  @author Paul Phillips
- *  @version 2.8
  *  @since   2.5
  *  @see [[http://docs.scala-lang.org/overviews/collections/concrete-immutable-collection-classes.html#ranges "Scala's Collection Library overview"]]
  *  section on `Ranges` for more information.
@@ -58,8 +60,7 @@ import scala.collection.parallel.immutable.ParRange
  */
 @SerialVersionUID(7618862778670199309L)
 @inline
-@deprecatedInheritance("The implementation details of Range makes inheriting from it unwise.", "2.11.0")
-class Range(val start: Int, val end: Int, val step: Int)
+sealed class Range(val start: Int, val end: Int, val step: Int)
 extends scala.collection.AbstractSeq[Int]
    with IndexedSeq[Int]
    with scala.collection.CustomParallelizable[Int, ParRange]
@@ -464,8 +465,6 @@ extends scala.collection.AbstractSeq[Int]
 /** A companion object for the `Range` class.
  */
 object Range {
-  private[immutable] val MAX_PRINT = 512  // some arbitrary value
-
   private def description(start: Int, end: Int, step: Int, isInclusive: Boolean) =
     start + (if (isInclusive) " to " else " until ") + end + " by " + step
 
@@ -508,7 +507,8 @@ object Range {
     count(start, end, step, isInclusive = false)
 
   @inline
-  class Inclusive(start: Int, end: Int, step: Int) extends Range(start, end, step) {
+  @SerialVersionUID(4237131469519710909L)
+  final class Inclusive(start: Int, end: Int, step: Int) extends Range(start, end, step) {
 //    override def par = new ParRange(this)
     override def isInclusive = true
     override protected def copy(start: Int, end: Int, step: Int): Range = new Inclusive(start, end, step)
@@ -568,9 +568,11 @@ object Range {
     implicit val doubleAsIntegral = scala.math.Numeric.DoubleAsIfIntegral
     def toBD(x: Double): BigDecimal = scala.math.BigDecimal valueOf x
 
+    @deprecated("use Range.BigDecimal instead", "2.12.6")
     def apply(start: Double, end: Double, step: Double) =
       BigDecimal(toBD(start), toBD(end), toBD(step)) mapRange (_.doubleValue)
 
+    @deprecated("use Range.BigDecimal.inclusive instead", "2.12.6")
     def inclusive(start: Double, end: Double, step: Double) =
       BigDecimal.inclusive(toBD(start), toBD(end), toBD(step)) mapRange (_.doubleValue)
   }

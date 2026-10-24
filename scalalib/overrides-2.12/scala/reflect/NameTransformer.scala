@@ -1,10 +1,14 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2013, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
+/*
+ * Scala (https://www.scala-lang.org)
+ *
+ * Copyright EPFL and Lightbend, Inc. dba Akka
+ *
+ * Licensed under Apache License 2.0
+ * (http://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
 
 package scala
 package reflect
@@ -13,14 +17,16 @@ package reflect
  *  Also provides some constants.
  */
 object NameTransformer {
-  // XXX Short term: providing a way to alter these without having to recompile
-  // the compiler before recompiling the compiler.
-  val MODULE_SUFFIX_STRING          = "$"
-  val NAME_JOIN_STRING              = "$"
-  val MODULE_INSTANCE_NAME          = "MODULE$"
-  val LOCAL_SUFFIX_STRING           = " "
-  val SETTER_SUFFIX_STRING          = "_$eq"
-  val TRAIT_SETTER_SEPARATOR_STRING = "$_setter_$"
+  // TODO: reduce duplication with and in StdNames
+  // I made these constants because we cannot change them without bumping our major version anyway.
+  final val NAME_JOIN_STRING              = "$"
+  final val MODULE_SUFFIX_STRING          = "$"
+  final val MODULE_INSTANCE_NAME          = "MODULE$"
+  final val LOCAL_SUFFIX_STRING           = " "
+  final val LAZY_LOCAL_SUFFIX_STRING      = "$lzy"
+  final val MODULE_VAR_SUFFIX_STRING      = "$module"
+  final val SETTER_SUFFIX_STRING          = "_$eq"
+  final val TRAIT_SETTER_SEPARATOR_STRING = "$_setter_$"
 
   private val nops = 128
   private val ncodes = 26 * 26

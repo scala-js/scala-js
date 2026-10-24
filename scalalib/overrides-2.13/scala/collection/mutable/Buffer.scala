@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -13,11 +13,18 @@
 package scala.collection
 package mutable
 
+import scala.annotation.nowarn
+
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo
 import scala.scalajs.LinkingInfo.linkTimeIf
 
-/** A `Buffer` is a growable and shrinkable `Seq`. */
+
+/** A `Buffer` is a growable and shrinkable `Seq`.
+ *
+ *  @define coll buffer
+ *  @define Coll `Buffer`
+ */
 trait Buffer[A]
   extends Seq[A]
     with SeqOps[A, Buffer, Buffer[A]]
@@ -38,23 +45,28 @@ trait Buffer[A]
   def prepend(elem: A): this.type
 
   /** Appends the given elements to this buffer.
-    *
-    *  @param elem  the element to append.
-    */
+   *
+   *  @param elem the element to append.
+   *  @return     this $coll
+   */
   @`inline` final def append(elem: A): this.type = addOne(elem)
 
   @deprecated("Use appendAll instead", "2.13.0")
   @`inline` final def append(elems: A*): this.type = addAll(elems)
 
   /** Appends the elements contained in a iterable object to this buffer.
-    *  @param xs  the iterable object containing the elements to append.
-    */
-  @`inline` final def appendAll(xs: IterableOnce[A]): this.type = addAll(xs)
-
+   *  @param elems  the iterable object containing the elements to append.
+   *  @return       this $coll
+   */
+  @`inline` final def appendAll(@deprecatedName("xs") elems: IterableOnce[A]): this.type = addAll(elems)
 
   /** Alias for `prepend` */
   @`inline` final def +=: (elem: A): this.type = prepend(elem)
 
+  /** Prepends the elements contained in a iterable object to this buffer.
+   *  @param elems  the iterable object containing the elements to append.
+   *  @return       this $coll
+   */
   def prependAll(elems: IterableOnce[A]): this.type = { insertAll(0, elems); this }
 
   @deprecated("Use prependAll instead", "2.13.0")
@@ -122,18 +134,28 @@ trait Buffer[A]
     *  @param n  the number of elements to remove from the beginning
     *            of this buffer.
     */
-  def trimStart(n: Int): Unit = remove(0, normalized(n))
+  @deprecated("use dropInPlace instead", since = "2.13.4")
+  def trimStart(n: Int): Unit = dropInPlace(n)
 
   /** Removes the last ''n'' elements of this buffer.
     *
     *  @param n  the number of elements to remove from the end
     *            of this buffer.
     */
-  def trimEnd(n: Int): Unit = {
-    val norm = normalized(n)
-    remove(length - norm, norm)
-  }
+  @deprecated("use dropRightInPlace instead", since = "2.13.4")
+  def trimEnd(n: Int): Unit = dropRightInPlace(n)
 
+  /** Replaces a slice of elements in this $coll by another sequence of elements.
+   *
+   *  Patching at negative indices is the same as patching starting at 0.
+   *  Patching at indices at or larger than the length of the original $coll appends the patch to the end.
+   *  If the `replaced` count would exceed the available elements, the difference in excess is ignored.
+   *
+   *  @param  from     the index of the first replaced element
+   *  @param  patch    the replacement sequence
+   *  @param  replaced the number of elements to drop in the original $coll
+   *  @return          this $coll
+   */
   def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A], replaced: Int): this.type
 
   // +=, ++=, clear inherited from Growable
@@ -143,35 +165,91 @@ trait Buffer[A]
   // def +=:(elem1: A, elem2: A, elems: A*): this.type = elem1 +=: elem2 +=: elems ++=: this
   // def ++=:(elems: IterableOnce[A]): this.type = { insertAll(0, elems); this }
 
+  /** Removes the first `n` elements from this $coll.
+   *
+   *  @param  n the number of elements to remove
+   *  @return this $coll
+   *
+   */
   def dropInPlace(n: Int): this.type = { remove(0, normalized(n)); this }
+
+  /** Removes the last `n` elements from this $coll.
+   *
+   *  @param  n the number of elements to remove
+   *  @return this $coll
+   *
+   */
   def dropRightInPlace(n: Int): this.type = {
     val norm = normalized(n)
     remove(length - norm, norm)
     this
   }
+
+  /** Retains the first `n` elements from this $coll and removes the rest.
+   *
+   *  @param  n the number of elements to retain
+   *  @return this $coll
+   *
+   */
   def takeInPlace(n: Int): this.type = {
     val norm = normalized(n)
     remove(norm, length - norm)
     this
   }
+
+  /** Retains the last `n` elements from this $coll and removes the rest.
+   *
+   *  @param  n the number of elements to retain
+   *  @return this $coll
+   *
+   */
   def takeRightInPlace(n: Int): this.type = { remove(0, length - normalized(n)); this }
+
+  /** Retains the specified slice from this $coll and removes the rest.
+   *
+   *  @param  start the lowest index to include
+   *  @param  end   the lowest index to exclude
+   *  @return this $coll
+   *
+   */
   def sliceInPlace(start: Int, end: Int): this.type = takeInPlace(end).dropInPlace(start)
+
   private def normalized(n: Int): Int = math.min(math.max(n, 0), length)
 
+  /** Drops the longest prefix of elements that satisfy a predicate.
+   *
+   *  @param   p  The predicate used to test elements.
+   *  @return this $coll
+   *  @see [[dropWhile]]
+   */
   def dropWhileInPlace(p: A => Boolean): this.type = {
     val idx = indexWhere(!p(_))
     if (idx < 0) { clear(); this } else dropInPlace(idx)
   }
+
+  /** Retains the longest prefix of elements that satisfy a predicate.
+   *
+   *  @param   p  The predicate used to test elements.
+   *  @return this $coll
+   *  @see [[takeWhile]]
+   */
   def takeWhileInPlace(p: A => Boolean): this.type = {
     val idx = indexWhere(!p(_))
     if (idx < 0) this else takeInPlace(idx)
   }
+
+  /** Appends the given element to this $coll until a target length is reached.
+   *
+   *  @param   len   the target length
+   *  @param   elem  the padding value
+   *  @return this $coll
+   */
   def padToInPlace(len: Int, elem: A): this.type = {
     while (length < len) +=(elem)
     this
   }
 
-  @deprecatedOverriding("Compatibility override", since="2.13.0")
+  @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected[this] def stringPrefix = "Buffer"
 }
 
@@ -182,6 +260,11 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
 
   override def iterableFactory: SeqFactory[IndexedBuffer] = IndexedBuffer
 
+  /** Replaces the contents of this $coll with the flatmapped result.
+   *
+   *  @param f the mapping function
+   *  @return this $coll
+   */
   def flatMapInPlace(f: A => IterableOnce[A]): this.type = {
     // There's scope for a better implementation which copies elements in place.
     var i = 0
@@ -194,6 +277,11 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
     this
   }
 
+  /** Replaces the contents of this $coll with the filtered result.
+   *
+   *  @param p the filtering function
+   *  @return this $coll
+   */
   def filterInPlace(p: A => Boolean): this.type = {
     var i, j = 0
     while (i < size) {
@@ -243,5 +331,4 @@ object IndexedBuffer extends SeqFactory.Delegate[IndexedBuffer](
 )
 
 /** Explicit instantiation of the `Buffer` trait to reduce class file size in subclasses. */
-@SerialVersionUID(3L)
 abstract class AbstractBuffer[A] extends AbstractSeq[A] with Buffer[A]

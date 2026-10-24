@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -45,9 +45,9 @@ import scala.util.DynamicVariable
  *        val prime = (2 to candidate - 1).forall(candidate % _ != 0)
  *
  *        if (prime)
- *          Console.println(s"${RESET}${GREEN}yes${RESET}")
+ *          Console.println(s"\${RESET}\${GREEN}yes\${RESET}")
  *        else
- *          Console.err.println(s"${RESET}${YELLOW_B}${RED}${UNDERLINED}NO!${RESET}")
+ *          Console.err.println(s"\${RESET}\${YELLOW_B}\${RED}\${UNDERLINED}NO!\${RESET}")
  *      }
  *
  *      def main(args: Array[String]): Unit = isPrime()
@@ -56,10 +56,10 @@ import scala.util.DynamicVariable
  *  }}}
  *
  *  <table style="border: 10px solid #000;width:100%">
- *    <tr><td style="background-color:#000;color:#fff">$ scala PrimeTest</td></tr>
+ *    <tr><td style="background-color:#000;color:#fff">\$ scala PrimeTest</td></tr>
  *    <tr><td style="background-color:#000;color:#fff">1234567891</td></tr>
  *    <tr><td style="background-color:#000;color:#0f0">yes</td></tr>
- *    <tr><td style="background-color:#000;color:#fff">$ scala PrimeTest</td></tr>
+ *    <tr><td style="background-color:#000;color:#fff">\$ scala PrimeTest</td></tr>
  *    <tr><td style="background-color:#000;color:#fff">56474</td></tr>
  *    <tr><td style="background-color:#000;color:#fff"><span style="background-color:#ff0;color:#f00;text-decoration:underline">NO!</span></td></tr>
  *  </table>
@@ -76,7 +76,7 @@ import scala.util.DynamicVariable
  *
  *      def isPrime(candidate: Int): Boolean = {
  *
- *        val input = new StringReader(s"$candidate\n")
+ *        val input = new StringReader(s"\$candidate\n")
  *        val outCapture = new ByteArrayOutputStream
  *        val errCapture = new ByteArrayOutputStream
  *
@@ -97,7 +97,7 @@ import scala.util.DynamicVariable
  *
  *      def main(args: Array[String]): Unit = {
  *        val primes = (2 to 50) filter (isPrime)
- *        println(s"First primes: $primes")
+ *        println(s"First primes: \$primes")
  *      }
  *
  *    }
@@ -105,12 +105,9 @@ import scala.util.DynamicVariable
  *
  *
  *  <table style="border: 10px solid #000;width:100%">
- *    <tr><td style="background-color:#000;color:#fff">$ scala FunctionalPrimeTest</td></tr>
+ *    <tr><td style="background-color:#000;color:#fff">\$ scala FunctionalPrimeTest</td></tr>
  *    <tr><td style="background-color:#000;color:#fff">First primes: Vector(2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47)</td></tr>
  *  </table>
- *
- *  @author  Matthias Zenger
- *  @since   1.0
  *
  *  @groupname console-output Console Output
  *  @groupprio console-output 30
@@ -136,18 +133,18 @@ object Console extends AnsiColor {
   protected def setErrDirect(err: PrintStream): Unit  = errVar.value = err
   protected def setInDirect(in: BufferedReader): Unit = inVar.value = in
 
-  /** The default output, can be overridden by `withOut`
+  /** The default output, can be overridden by `withOut`.
    *  @group io-default
    */
-  def out = outVar.value
-  /** The default error, can be overridden by `withErr`
+  def out: PrintStream = outVar.value
+  /** The default error, can be overridden by `withErr`.
    *  @group io-default
    */
-  def err = errVar.value
-  /** The default input, can be overridden by `withIn`
+  def err: PrintStream = errVar.value
+  /** The default input, can be overridden by `withIn`.
    *  @group io-default
    */
-  def in = inVar.value
+  def in: BufferedReader = inVar.value
 
   /** Sets the default output stream for the duration
    *  of execution of one thunk.
@@ -163,7 +160,7 @@ object Console extends AnsiColor {
    *  @see `withOut[T](out:OutputStream)(thunk: => T)`
    *  @group io-redefinition
    */
-  def withOut[T](out: PrintStream)(thunk: =>T): T =
+  def withOut[T](out: PrintStream)(thunk: => T): T =
     outVar.withValue(out)(thunk)
 
   /** Sets the default output stream for the duration
@@ -176,10 +173,10 @@ object Console extends AnsiColor {
    *  @see `withOut[T](out:PrintStream)(thunk: => T)`
    *  @group io-redefinition
    */
-  def withOut[T](out: OutputStream)(thunk: =>T): T =
+  def withOut[T](out: OutputStream)(thunk: => T): T =
     withOut(new PrintStream(out))(thunk)
 
-  /** Set the default error stream for the duration
+  /** Sets the default error stream for the duration
    *  of execution of one thunk.
    *  @example {{{
    *  withErr(Console.out) { err.println("This goes to default _out_") }
@@ -189,10 +186,10 @@ object Console extends AnsiColor {
    *  @param thunk the code to execute with
    *               the new error stream active
    *  @return the results of `thunk`
-   *  @see `withErr[T](err:OutputStream)(thunk: =>T)`
+   *  @see `withErr[T](err:OutputStream)(thunk: => T)`
    *  @group io-redefinition
    */
-  def withErr[T](err: PrintStream)(thunk: =>T): T =
+  def withErr[T](err: PrintStream)(thunk: => T): T =
     errVar.withValue(err)(thunk)
 
   /** Sets the default error stream for the duration
@@ -202,10 +199,10 @@ object Console extends AnsiColor {
    *  @param thunk the code to execute with
    *               the new error stream active
    *  @return the results of `thunk`
-   *  @see `withErr[T](err:PrintStream)(thunk: =>T)`
+   *  @see `withErr[T](err:PrintStream)(thunk: => T)`
    *  @group io-redefinition
    */
-  def withErr[T](err: OutputStream)(thunk: =>T): T =
+  def withErr[T](err: OutputStream)(thunk: => T): T =
     withErr(new PrintStream(err))(thunk)
 
   /** Sets the default input stream for the duration
@@ -223,10 +220,10 @@ object Console extends AnsiColor {
    *               the new input stream active
    *
    *  @return the results of `thunk`
-   *  @see `withIn[T](in:InputStream)(thunk: =>T)`
+   *  @see `withIn[T](in:InputStream)(thunk: => T)`
    *  @group io-redefinition
    */
-  def withIn[T](reader: Reader)(thunk: =>T): T =
+  def withIn[T](reader: Reader)(thunk: => T): T =
     inVar.withValue(new BufferedReader(reader))(thunk)
 
   /** Sets the default input stream for the duration
@@ -236,15 +233,15 @@ object Console extends AnsiColor {
    *  @param thunk the code to execute with
    *               the new input stream active
    *  @return the results of `thunk`
-   *  @see `withIn[T](reader:Reader)(thunk: =>T)`
+   *  @see `withIn[T](reader:Reader)(thunk: => T)`
    *  @group io-redefinition
    */
-  def withIn[T](in: InputStream)(thunk: =>T): T =
+  def withIn[T](in: InputStream)(thunk: => T): T =
     withIn(new InputStreamReader(in))(thunk)
 
   /** Prints an object to `out` using its `toString` method.
    *
-   *  @param obj the object to print; may be null.
+   *  @param obj the object to print; may be `null`.
    *  @group console-output
    */
   def print(obj: Any): Unit = {
@@ -280,5 +277,5 @@ object Console extends AnsiColor {
    *  @throws java.lang.IllegalArgumentException if there was a problem with the format string or arguments
    *  @group console-output
    */
-  def printf(text: String, args: Any*): Unit = { out.print(text format (args : _*)) }
+  def printf(text: String, args: Any*): Unit = { out.print(text.format(args: _*)) }
 }

@@ -1,10 +1,14 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2013, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
+/*
+ * Scala (https://www.scala-lang.org)
+ *
+ * Copyright EPFL and Lightbend, Inc. dba Akka
+ *
+ * Licensed under Apache License 2.0
+ * (http://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
 
 package scala
 package runtime
@@ -36,7 +40,7 @@ object ScalaRunTime {
   /** Return the class object representing an array with element class `clazz`.
    */
   def arrayClass(clazz: jClass[_]): jClass[_] = {
-    // newInstance throws an exception if the erasure is Void.TYPE. see SI-5680
+    // newInstance throws an exception if the erasure is Void.TYPE. see scala/bug#5680
     if (clazz == java.lang.Void.TYPE) classOf[Array[Unit]]
     else java.lang.reflect.Array.newInstance(clazz, 0).getClass
   }
@@ -111,27 +115,49 @@ object ScalaRunTime {
    *  Needed to deal with vararg arguments of primitive types that are passed
    *  to a generic Java vararg parameter T ...
    */
-  def toObjectArray(src: AnyRef): Array[Object] = src match {
-    case x: Array[AnyRef] => x
-    case _ =>
-      val length = array_length(src)
-      val dest = new Array[Object](length)
-      for (i <- 0 until length)
-        array_update(dest, i, array_apply(src, i))
-      dest
+  def toObjectArray(src: AnyRef): Array[Object] = {
+    def copy[@specialized T <: AnyVal](src: Array[T]): Array[Object] = {
+      val length = src.length
+      if (length == 0) Array.emptyObjectArray
+      else {
+        val dest = new Array[Object](length)
+        var i = 0
+        while (i < length) {
+          dest(i) = src(i).asInstanceOf[AnyRef]
+          i += 1
+        }
+        dest
+      }
+    }
+    src match {
+      case x: Array[AnyRef]  => x
+      case x: Array[Int]     => copy(x)
+      case x: Array[Double]  => copy(x)
+      case x: Array[Long]    => copy(x)
+      case x: Array[Float]   => copy(x)
+      case x: Array[Char]    => copy(x)
+      case x: Array[Byte]    => copy(x)
+      case x: Array[Short]   => copy(x)
+      case x: Array[Boolean] => copy(x)
+      case null => throw new NullPointerException
+    }
   }
 
   def toArray[T](xs: scala.collection.Seq[T]) = {
-    val arr = new Array[AnyRef](xs.length)
-    var i = 0
-    for (x <- xs) {
-      arr(i) = x.asInstanceOf[AnyRef]
-      i += 1
+    if (xs.isEmpty) Array.emptyObjectArray
+    else {
+      val arr = new Array[AnyRef](xs.length)
+      val it = xs.iterator
+      var i = 0
+      while (it.hasNext) {
+        arr(i) = it.next().asInstanceOf[AnyRef]
+        i += 1
+      }
+      arr
     }
-    arr
   }
 
-  // Java bug: http://bugs.java.com/bugdatabase/view_bug.do?bug_id=4071957
+  // Java bug: https://bugs.java.com/view_bug.do?bug_id=4071957
   // More background at ticket #2318.
   def ensureAccessible(m: JMethod): JMethod = scala.reflect.ensureAccessible(m)
 

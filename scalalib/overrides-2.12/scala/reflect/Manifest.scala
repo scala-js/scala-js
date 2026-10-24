@@ -1,10 +1,14 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2007-2013, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
+/*
+ * Scala (https://www.scala-lang.org)
+ *
+ * Copyright EPFL and Lightbend, Inc. dba Akka
+ *
+ * Licensed under Apache License 2.0
+ * (http://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
 
 package scala
 package reflect
@@ -91,6 +95,12 @@ object ManifestFactory {
     override def newArray(len: Int): Array[Byte] = new Array[Byte](len)
     override def newWrappedArray(len: Int): WrappedArray[Byte] = new WrappedArray.ofByte(new Array[Byte](len))
     override def newArrayBuilder(): ArrayBuilder[Byte] = new ArrayBuilder.ofByte()
+    override def unapply(x: Any): Option[Byte] = {
+      x match {
+        case d: Byte => Some(d)
+        case _ => None
+      }
+    }
     private def readResolve(): Any = Manifest.Byte
   }
   val Byte: AnyValManifest[Byte] = ByteManifest
@@ -100,6 +110,12 @@ object ManifestFactory {
     override def newArray(len: Int): Array[Short] = new Array[Short](len)
     override def newWrappedArray(len: Int): WrappedArray[Short] = new WrappedArray.ofShort(new Array[Short](len))
     override def newArrayBuilder(): ArrayBuilder[Short] = new ArrayBuilder.ofShort()
+    override def unapply(x: Any): Option[Short] = {
+      x match {
+        case d: Short => Some(d)
+        case _ => None
+      }
+    }
     private def readResolve(): Any = Manifest.Short
   }
   val Short: AnyValManifest[Short] = ShortManifest
@@ -109,6 +125,12 @@ object ManifestFactory {
     override def newArray(len: Int): Array[Char] = new Array[Char](len)
     override def newWrappedArray(len: Int): WrappedArray[Char] = new WrappedArray.ofChar(new Array[Char](len))
     override def newArrayBuilder(): ArrayBuilder[Char] = new ArrayBuilder.ofChar()
+    override def unapply(x: Any): Option[Char] = {
+      x match {
+        case d: Char => Some(d)
+        case _ => None
+      }
+    }
     private def readResolve(): Any = Manifest.Char
   }
   val Char: AnyValManifest[Char] = CharManifest
@@ -118,6 +140,12 @@ object ManifestFactory {
     override def newArray(len: Int): Array[Int] = new Array[Int](len)
     override def newWrappedArray(len: Int): WrappedArray[Int] = new WrappedArray.ofInt(new Array[Int](len))
     override def newArrayBuilder(): ArrayBuilder[Int] = new ArrayBuilder.ofInt()
+    override def unapply(x: Any): Option[Int] = {
+      x match {
+        case d: Int => Some(d)
+        case _ => None
+      }
+    }
     private def readResolve(): Any = Manifest.Int
   }
   val Int: AnyValManifest[Int] = IntManifest
@@ -127,6 +155,12 @@ object ManifestFactory {
     override def newArray(len: Int): Array[Long] = new Array[Long](len)
     override def newWrappedArray(len: Int): WrappedArray[Long] = new WrappedArray.ofLong(new Array[Long](len))
     override def newArrayBuilder(): ArrayBuilder[Long] = new ArrayBuilder.ofLong()
+    override def unapply(x: Any): Option[Long] = {
+      x match {
+        case d: Long => Some(d)
+        case _ => None
+      }
+    }
     private def readResolve(): Any = Manifest.Long
   }
   val Long: AnyValManifest[Long] = LongManifest
@@ -136,15 +170,30 @@ object ManifestFactory {
     override def newArray(len: Int): Array[Float] = new Array[Float](len)
     override def newWrappedArray(len: Int): WrappedArray[Float] = new WrappedArray.ofFloat(new Array[Float](len))
     override def newArrayBuilder(): ArrayBuilder[Float] = new ArrayBuilder.ofFloat()
+    override def unapply(x: Any): Option[Float] = {
+      x match {
+        case d: Float => Some(d)
+        case _ => None
+      }
+    }
     private def readResolve(): Any = Manifest.Float
   }
   val Float: AnyValManifest[Float] = FloatManifest
 
   private object DoubleManifest extends AnyValManifest[scala.Double]("Double") {
     def runtimeClass = java.lang.Double.TYPE
-    override def newArray(len: Int): Array[Double] = new Array[Double](len)
+    override def newArray(len: Int): Array[Double] = {
+      new Array[Double](len)
+    }
     override def newWrappedArray(len: Int): WrappedArray[Double] = new WrappedArray.ofDouble(new Array[Double](len))
     override def newArrayBuilder(): ArrayBuilder[Double] = new ArrayBuilder.ofDouble()
+
+    override def unapply(x: Any): Option[Double] = {
+      x match {
+        case d: Double => Some(d)
+        case _ => None
+      }
+    }
     private def readResolve(): Any = Manifest.Double
   }
   val Double: AnyValManifest[Double] = DoubleManifest
@@ -154,6 +203,12 @@ object ManifestFactory {
     override def newArray(len: Int): Array[Boolean] = new Array[Boolean](len)
     override def newWrappedArray(len: Int): WrappedArray[Boolean] = new WrappedArray.ofBoolean(new Array[Boolean](len))
     override def newArrayBuilder(): ArrayBuilder[Boolean] = new ArrayBuilder.ofBoolean()
+    override def unapply(x: Any): Option[Boolean] = {
+      x match {
+        case d: Boolean => Some(d)
+        case _ => None
+      }
+    }
     private def readResolve(): Any = Manifest.Boolean
   }
   val Boolean: AnyValManifest[Boolean] = BooleanManifest
@@ -166,6 +221,12 @@ object ManifestFactory {
     override protected def arrayClass[T](tp: Class[_]): Class[Array[T]] =
       if (tp eq runtimeClass) classOf[Array[scala.runtime.BoxedUnit]].asInstanceOf[Class[Array[T]]]
       else super.arrayClass(tp)
+    override def unapply(x: Any): Option[Unit] = {
+      x match {
+        case d: Unit => Some(d)
+        case _ => None
+      }
+    }
     private def readResolve(): Any = Manifest.Unit
   }
   val Unit: AnyValManifest[Unit] = UnitManifest
@@ -213,6 +274,7 @@ object ManifestFactory {
   }
   val Nothing: Manifest[scala.Nothing] = NothingManifest
 
+  @SerialVersionUID(1L)
   private class SingletonTypeManifest[T <: AnyRef](value: AnyRef) extends Manifest[T] {
     lazy val runtimeClass = value.getClass
     override lazy val toString = value.toString + ".type"
@@ -243,6 +305,7 @@ object ManifestFactory {
   def classType[T](prefix: Manifest[_], clazz: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
     new ClassTypeManifest[T](Some(prefix), clazz, args.toList)
 
+  @SerialVersionUID(1L)
   private abstract class PhantomManifest[T](_runtimeClass: Predef.Class[_],
                                             override val toString: String) extends ClassTypeManifest[T](None, _runtimeClass, Nil) {
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
@@ -251,6 +314,7 @@ object ManifestFactory {
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
     * a top-level or static class. */
+  @SerialVersionUID(1L)
   private class ClassTypeManifest[T](prefix: Option[Manifest[_]],
                                      runtimeClass1: Predef.Class[_],
                                      override val typeArguments: List[Manifest[_]]) extends Manifest[T] {
@@ -264,6 +328,7 @@ object ManifestFactory {
   def arrayType[T](arg: Manifest[_]): Manifest[Array[T]] =
     arg.asInstanceOf[Manifest[T]].arrayManifest
 
+  @SerialVersionUID(1L)
   private class AbstractTypeManifest[T](prefix: Manifest[_], name: String, upperBound: Predef.Class[_], args: Seq[Manifest[_]]) extends Manifest[T] {
     def runtimeClass = upperBound
     override val typeArguments = args.toList
@@ -276,6 +341,7 @@ object ManifestFactory {
   def abstractType[T](prefix: Manifest[_], name: String, upperBound: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
     new AbstractTypeManifest[T](prefix, name, upperBound, args)
 
+  @SerialVersionUID(1L)
   private class WildcardManifest[T](lowerBound: Manifest[_], upperBound: Manifest[_]) extends Manifest[T] {
     def runtimeClass = upperBound.runtimeClass
     override def toString =
@@ -289,6 +355,7 @@ object ManifestFactory {
   def wildcardType[T](lowerBound: Manifest[_], upperBound: Manifest[_]): Manifest[T] =
     new WildcardManifest[T](lowerBound, upperBound)
 
+  @SerialVersionUID(1L)
   private class IntersectionTypeManifest[T](parents: Seq[Manifest[_]]) extends Manifest[T] {
     def runtimeClass = parents.head.runtimeClass
     override def toString = parents.mkString(" with ")

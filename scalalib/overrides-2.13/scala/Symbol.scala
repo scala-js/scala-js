@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -17,20 +17,11 @@ import scala.scalajs.LinkingInfo._
 
 /** This class provides a simple way to get unique objects for equal strings.
  *  Since symbols are interned, they can be compared using reference equality.
- *  Instances of `Symbol` can be created easily with Scala's built-in quote
- *  mechanism.
- *
- *  For instance, the Scala term `'mysym` will
- *  invoke the constructor of the `Symbol` class in the following way:
- *  `Symbol("mysym")`.
- *
- *  @author  Martin Odersky, Iulian Dragos
- *  @since   1.7
  */
 final class Symbol private (val name: String) extends Serializable {
-  /** Converts this symbol to a string.
+  /** A string representation of this symbol.
    */
-  override def toString(): String = "Symbol(" + name + ")"
+  override def toString(): String = s"Symbol($name)"
 
   @throws(classOf[java.io.ObjectStreamException])
   private def readResolve(): Any = Symbol.apply(name)
@@ -80,9 +71,7 @@ private[scala] abstract class JSUniquenessCache[V]
 /** This is private so it won't appear in the library API, but
   * abstracted to offer some hope of reusability.  */
 /* DELETED for Scala.js
-private[scala] abstract class UniquenessCache[K >: js.String, V >: Null]
-{
-
+private[scala] abstract class UniquenessCache[K, V >: Null] {
   import java.lang.ref.WeakReference
   import java.util.WeakHashMap
   import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -123,10 +112,10 @@ private[scala] abstract class UniquenessCache[K >: js.String, V >: Null]
       }
       finally wlock.unlock
     }
-
-    val res = cached()
-    if (res == null) updateCache()
-    else res
+    cached() match {
+      case null => updateCache()
+      case res  => res
+    }
   }
   def unapply(other: V): Option[K] = keyFromValue(other)
 }
