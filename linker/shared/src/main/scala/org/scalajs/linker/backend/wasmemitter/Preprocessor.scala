@@ -27,8 +27,15 @@ import EmbeddedConstants._
 import WasmContext._
 
 object Preprocessor {
-  def preprocess(coreSpec: CoreSpec, coreLib: CoreWasmLib,
-      classes: List[LinkedClass], tles: List[LinkedTopLevelExport]): WasmContext = {
+  final class Result(
+      val classInfos: Map[ClassName, WasmContext.ClassInfo],
+      val reflectiveProxies: Map[MethodName, Int],
+      val privateJSFields: Map[FieldName, String],
+      val itablesLength: Int
+  )
+
+  def preprocess(coreSpec: CoreSpec, classes: List[LinkedClass],
+      tles: List[LinkedTopLevelExport]): Result = {
     val staticFieldMirrors = computeStaticFieldMirrors(tles)
     val privateJSFields = computePrivateJSFields(classes)
 
@@ -67,8 +74,7 @@ object Preprocessor {
     // sort for stability
     val reflectiveProxyIDs = definedReflectiveProxyNames.toList.sorted.zipWithIndex.toMap
 
-    new WasmContext(coreSpec, coreLib, classInfos, reflectiveProxyIDs,
-        privateJSFields, itableBucketCount)
+    new Result(classInfos, reflectiveProxyIDs, privateJSFields, itableBucketCount)
   }
 
   private def computeStaticFieldMirrors(
