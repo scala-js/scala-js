@@ -42,19 +42,20 @@ import org.scalajs.linker.backend.javascript.{Trees => js}
 import EmbeddedConstants._
 import SpecialNames._
 import VarGen._
+import Preprocessor.ClassInfo
 
 final class WasmContext(
     val coreSpec: CoreSpec,
     val coreLib: CoreWasmLib,
-    classInfo: Map[ClassName, WasmContext.ClassInfo],
-    reflectiveProxies: Map[MethodName, Int],
-    val privateJSFields: Map[FieldName, String],
-    val itablesLength: Int
+    preprocessResult: Preprocessor.Result
 ) {
   import WasmContext._
 
   val useCustomDescriptors = coreSpec.wasmFeatures.experimentalUseCustomDescriptors
   val hasJSInterop: Boolean = coreSpec.moduleKind == ModuleKind.ESModule
+
+  val privateJSFields: Map[FieldName, String] = preprocessResult.privateJSFields
+  val itablesLength: Int = preprocessResult.itablesLength
 
   /** Hijacked classes that we must emit as real box classes. */
   val hijackedClassesWithBoxes: Set[ClassName] = {
@@ -121,10 +122,10 @@ final class WasmContext(
   val mainRecType: ModuleBuilder.RecTypeBuilder = new ModuleBuilder.RecTypeBuilder
 
   def getClassInfoOption(name: ClassName): Option[ClassInfo] =
-    classInfo.get(name)
+    preprocessResult.classInfos.get(name)
 
   def getClassInfo(name: ClassName): ClassInfo =
-    classInfo.getOrElse(name, throw new Error(s"Class not found: $name"))
+    preprocessResult.classInfos.getOrElse(name, throw new Error(s"Class not found: $name"))
 
   def inferTypeFromTypeRef(typeRef: TypeRef): Type = typeRef match {
     case PrimRef(tpe) =>
@@ -145,7 +146,7 @@ final class WasmContext(
    *  If no class defines a reflective proxy with the given name, returns `-1`.
    */
   def getReflectiveProxyId(name: MethodName): Int =
-    reflectiveProxies.getOrElse(name, -1)
+    preprocessResult.reflectiveProxies.getOrElse(name, -1)
 
   /** Adds or reuses a function type for a table function.
    *
@@ -272,91 +273,5 @@ object WasmContext {
     override def toString(): String = s"customJSHelper.$index"
 
     val importName: String = index.toString()
-  }
-
-  final class ClassInfo(
-      val name: ClassName,
-      val kind: ClassKind,
-      val jsClassCaptures: Option[List[ParamDef]],
-      val allFieldDefs: List[FieldDef],
-      val hasInstances: Boolean,
-      val isAbstract: Boolean,
-      val hasRuntimeTypeInfo: Boolean,
-      val jsPrototypeHolder: Option[ClassName],
-      val jsNativeLoadSpec: Option[JSNativeLoadSpec],
-      val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
-      val wasmImportedMembers: Map[MethodName, WasmImportedMethodDef],
-      val staticFieldMirrors: Map[FieldName, List[String]],
-      _specialInstanceTypes: Int, // should be `val` but there is a large Scaladoc for it below
-      val resolvedMethodInfos: Map[MethodName, ConcreteMethodInfo],
-      val tableEntries: List[MethodName],
-      _itableIdx: Int
-  ) {
-    override def toString(): String =
-      s"ClassInfo(${name.nameString})"
-
-    /** Returns the index of this interface's itable in the classes' vtables.
-     *
-     *  Only interfaces that have instances get an itable index.
-     */
-    def itableIdx: Int = {
-      if (_itableIdx < 0) {
-        val isInterface = kind == ClassKind.Interface
-        if (isInterface && hasInstances) {
-          // it should have received an itable idx
-          throw new IllegalStateException(
-              s"$this was not assigned an itable index although it needs one.")
-        } else {
-          throw new IllegalArgumentException(
-              s"Trying to ask the itable idx for $this, which is not supposed to have one " +
-              s"(isInterface = $isInterface; hasInstances = $hasInstances).")
-        }
-      }
-      _itableIdx
-    }
-
-    /** A bitset of the `jsValueType`s corresponding to hijacked classes that extend this class.
-     *
-     *  This value is used for instance tests against this class. A JS value `x` is an instance of
-     *  this type iff `jsValueType(x)` is a member of this bitset. Because of how a bitset works,
-     *  this means testing the following formula:
-     *
-     *  {{{
-     *  ((1 << jsValueType(x)) & specialInstanceTypes) != 0
-     *  }}}
-     *
-     *  For example, if this class is `Comparable`, we want the bitset to contain the values for
-     *  `boolean`, `string` and `number` (but not `undefined`), because `jl.Boolean`, `jl.String`
-     *  and `jl.Double` implement `Comparable`.
-     *
-     *  This field is initialized with 0, and augmented during preprocessing by calls to
-     *  `addSpecialInstanceType`.
-     *
-     *  This technique is used both for static `isInstanceOf` tests as well as reflective tests
-     *  through `Class.isInstance`. For the latter, this value is stored in
-     *  `typeData.specialInstanceTypes`. For the former, it is embedded as a constant in the
-     *  generated code.
-     *
-     *  See the `isInstance` and `genInstanceTest` helpers.
-     *
-     *  Special cases: this value remains 0 for all the numeric hijacked classes except `jl.Double`,
-     *  since `jsValueType(x) == JSValueTypeNumber` is not enough to deduce that
-     *  `x.isInstanceOf[Int]`, for example.
-     */
-    val specialInstanceTypes: Int = _specialInstanceTypes
-
-    /** Is this class an ancestor of any hijacked class?
-     *
-     *  This includes but is not limited to the hijacked classes themselves, as well as `jl.Object`.
-     */
-    def isAncestorOfHijackedClass: Boolean =
-      specialInstanceTypes != 0 || kind == ClassKind.HijackedClass
-
-    def isInterface: Boolean =
-      kind == ClassKind.Interface
-  }
-
-  final class ConcreteMethodInfo(val ownerClass: ClassName, val methodName: MethodName) {
-    val tableEntryID = genFunctionID.forTableEntry(ownerClass, methodName)
   }
 }

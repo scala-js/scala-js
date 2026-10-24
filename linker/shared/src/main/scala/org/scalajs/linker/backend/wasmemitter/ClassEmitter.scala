@@ -38,7 +38,7 @@ import SWasmGen._
 import VarGen._
 import SpecialNames._
 import TypeTransformer._
-import WasmContext._
+import Preprocessor.{ClassInfo, ConcreteMethodInfo}
 
 class ClassEmitter(coreSpec: CoreSpec) {
   import ClassEmitter._
@@ -1968,7 +1968,7 @@ object ClassEmitter {
    *  @param ancestors
    *    The list of ancestors of the target class.
    */
-  def genItableSlots(classInfoForResolving: WasmContext.ClassInfo,
+  def genItableSlots(classInfoForResolving: ClassInfo,
       ancestors: List[ClassName])(
       implicit ctx: WasmContext): List[wa.Instr] = {
     val itablesInit = Array.fill[List[wa.Instr]](ctx.itablesLength) {
