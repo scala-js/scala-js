@@ -1137,7 +1137,7 @@ private class FunctionEmitter private (
             fb += wa.LocalSet(receiverLocal)
             val argsLocals: List[wanme.LocalID] = {
               for ((arg, typeRef) <- args.zip(methodName.paramTypeRefs)) yield {
-                val tpe = ctx.inferTypeFromTypeRef(typeRef)
+                val tpe = inferTypeFromTypeRef(typeRef)
                 genTree(arg, tpe)
                 val localID = addSyntheticLocal(transformParamType(tpe))
                 fb += wa.LocalSet(localID)
@@ -1384,7 +1384,7 @@ private class FunctionEmitter private (
         MemberNamespace.PublicStatic, className, methodName)
 
     for ((arg, paramTypeRef) <- args.zip(methodName.paramTypeRefs)) {
-      val paramType = ctx.inferTypeFromTypeRef(paramTypeRef)
+      val paramType = inferTypeFromTypeRef(paramTypeRef)
       genTree(arg, paramType)
       WasmInteropGen.genScalaToWasm(fb, paramType)
     }
@@ -1442,7 +1442,7 @@ private class FunctionEmitter private (
 
   private def genArgs(args: List[Tree], methodName: MethodName): Unit = {
     for ((arg, paramTypeRef) <- args.zip(methodName.paramTypeRefs)) {
-      val paramType = ctx.inferTypeFromTypeRef(paramTypeRef)
+      val paramType = inferTypeFromTypeRef(paramTypeRef)
       genTree(arg, paramType)
     }
   }
