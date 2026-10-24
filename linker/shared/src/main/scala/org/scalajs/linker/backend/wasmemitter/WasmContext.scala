@@ -290,6 +290,7 @@ object WasmContext {
       _specialInstanceTypes: Int, // should be `val` but there is a large Scaladoc for it below
       val resolvedMethodInfos: Map[MethodName, ConcreteMethodInfo],
       val tableEntries: List[MethodName],
+      val methodsReachedDynamically: Set[MethodName],
       _itableIdx: Int
   ) {
     override def toString(): String =
