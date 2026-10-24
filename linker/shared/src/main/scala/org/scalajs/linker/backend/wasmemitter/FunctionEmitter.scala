@@ -39,6 +39,7 @@ import SpecialNames._
 import SWasmGen._
 import VarGen._
 import TypeTransformer._
+import Preprocessor.ClassInfo
 
 object FunctionEmitter {
 
@@ -1010,7 +1011,7 @@ private class FunctionEmitter private (
    *  we must use a statically resolved call instead.
    */
   private def genApplyWithDispatch(tree: Apply,
-      receiverClassInfo: WasmContext.ClassInfo): Type = {
+      receiverClassInfo: ClassInfo): Type = {
 
     val Apply(flags, receiver, MethodIdent(methodName), args) = tree
 
@@ -1274,7 +1275,7 @@ private class FunctionEmitter private (
    *  `genTableDispatch` leaves the stack in an arbitrary state. It is up to the caller to insert an
    *  `unreachable` instruction when appropriate.
    */
-  def genTableDispatch(receiverClassInfo: WasmContext.ClassInfo,
+  def genTableDispatch(receiverClassInfo: ClassInfo,
       methodName: MethodName, receiverLocalForDispatch: wanme.LocalID): Unit = {
     // Generates an itable-based dispatch.
     def genITableDispatch(): Unit = {
