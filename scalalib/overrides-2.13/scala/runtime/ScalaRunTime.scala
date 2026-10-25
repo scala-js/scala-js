@@ -163,6 +163,12 @@ object ScalaRunTime {
   // There used to be an `_equals` method as well which was removed in 5e7e81ab2a.
   def _hashCode(x: Product): Int = scala.util.hashing.MurmurHash3.caseClassHash(x)
 
+  // Scala.js: compat for Scala < 2.13.17, where _hashCode called productHash
+  private implicit class HashCodeCompat(private val self: scala.util.hashing.MurmurHash3.type) extends AnyVal {
+    @inline def caseClassHash(x: Product): Int =
+      scala.util.hashing.MurmurHash3.productHash(x)
+  }
+
   /** A helper for case classes. */
   def typedProductIterator[T](x: Product): Iterator[T] = {
     new AbstractIterator[T] {

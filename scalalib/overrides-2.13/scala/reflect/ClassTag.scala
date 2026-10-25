@@ -16,7 +16,6 @@ package reflect
 import java.lang.{Class => jClass}
 import java.lang.ref.{WeakReference => jWeakReference}
 import scala.annotation.{implicitNotFound, nowarn}
-import scala.runtime.ClassValueCompat
 
 /**
  *
