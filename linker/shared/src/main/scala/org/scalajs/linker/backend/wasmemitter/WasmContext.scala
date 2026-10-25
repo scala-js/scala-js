@@ -46,15 +46,15 @@ import VarGen._
 final class WasmContext(
     val coreSpec: CoreSpec,
     val coreLib: CoreWasmLib,
-    classInfo: Map[ClassName, WasmContext.ClassInfo],
-    reflectiveProxies: Map[MethodName, Int],
-    val privateJSFields: Map[FieldName, String],
-    val itablesLength: Int
+    preprocessResult: Preprocessor.Result
 ) {
   import WasmContext._
 
   val useCustomDescriptors = coreSpec.wasmFeatures.experimentalUseCustomDescriptors
   val hasJSInterop: Boolean = coreSpec.moduleKind == ModuleKind.ESModule
+
+  val privateJSFields: Map[FieldName, String] = preprocessResult.privateJSFields
+  val itablesLength: Int = preprocessResult.itablesLength
 
   /** Hijacked classes that we must emit as real box classes. */
   val hijackedClassesWithBoxes: Set[ClassName] = {
@@ -121,10 +121,10 @@ final class WasmContext(
   val mainRecType: ModuleBuilder.RecTypeBuilder = new ModuleBuilder.RecTypeBuilder
 
   def getClassInfoOption(name: ClassName): Option[ClassInfo] =
-    classInfo.get(name)
+    preprocessResult.classInfos.get(name)
 
   def getClassInfo(name: ClassName): ClassInfo =
-    classInfo.getOrElse(name, throw new Error(s"Class not found: $name"))
+    preprocessResult.classInfos.getOrElse(name, throw new Error(s"Class not found: $name"))
 
   def inferTypeFromTypeRef(typeRef: TypeRef): Type = typeRef match {
     case PrimRef(tpe) =>
@@ -145,7 +145,7 @@ final class WasmContext(
    *  If no class defines a reflective proxy with the given name, returns `-1`.
    */
   def getReflectiveProxyId(name: MethodName): Int =
-    reflectiveProxies.getOrElse(name, -1)
+    preprocessResult.reflectiveProxies.getOrElse(name, -1)
 
   /** Adds or reuses a function type for a table function.
    *

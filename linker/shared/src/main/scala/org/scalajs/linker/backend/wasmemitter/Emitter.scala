@@ -97,10 +97,11 @@ final class Emitter(config: Emitter.Config) {
     val topLevelExports = module.topLevelExports
     val moduleInitializers = module.initializers.toList
 
+    val preprocessResult = Preprocessor.preprocess(coreSpec, sortedClasses, topLevelExports)
+
     val coreLib = new CoreWasmLib(coreSpec, globalInfo)
 
-    implicit val ctx: WasmContext =
-      Preprocessor.preprocess(coreSpec, coreLib, sortedClasses, topLevelExports)
+    implicit val ctx: WasmContext = new WasmContext(coreSpec, coreLib, preprocessResult)
 
     coreLib.genPreClasses()
     sortedClasses.foreach(classEmitter.genClassDef(_))
