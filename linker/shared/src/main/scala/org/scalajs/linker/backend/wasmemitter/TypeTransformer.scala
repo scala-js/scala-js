@@ -13,12 +13,15 @@
 package org.scalajs.linker.backend.wasmemitter
 
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Types._
 import org.scalajs.ir.WellKnownNames._
 
 import org.scalajs.linker.backend.webassembly.{Types => watpe}
 
 import VarGen._
+import SpecialNames.normalizedSimpleMethodName
 
 object TypeTransformer {
 
@@ -164,5 +167,95 @@ object TypeTransformer {
         throw new IllegalArgumentException(
             s"${tpe.show()} does not have a corresponding Wasm type")
     }
+  }
+
+  def transformTableFunctionType(normalizedName: MethodName)(
+      implicit ctx: WasmContext): watpe.SubType = {
+    assert(normalizedName.simpleName == normalizedSimpleMethodName)
+
+    val typeID = genTypeID.forTableFunctionType(normalizedName)
+    val regularParamTyps = normalizedName.paramTypeRefs.map { typeRef =>
+      transformParamType(inferTypeFromTypeRef(typeRef))
+    }
+    val resultType = transformResultType(inferTypeFromTypeRef(normalizedName.resultTypeRef))
+
+    watpe.SubType(
+      typeID,
+      ClassEmitter.makeTableEntryTypeOriginalName(normalizedName),
+      watpe.FunctionType(watpe.RefType.any :: regularParamTyps, resultType)
+    )
+  }
+
+  def normalizeTableMethodName(methodName: MethodName): MethodName = {
+    MethodName(
+      normalizedSimpleMethodName,
+      methodName.paramTypeRefs,
+      methodName.resultTypeRef,
+      methodName.isReflectiveProxy
+    )
+  }
+
+  def transformClosureDataStructType(captureParamTypes: List[Type])(
+      implicit ctx: WasmContext): watpe.StructType = {
+    val fields: List[watpe.StructField] = {
+      for ((tpe, i) <- captureParamTypes.zipWithIndex) yield {
+        watpe.StructField(
+          genFieldID.captureParam(i),
+          NoOriginalName,
+          transformParamType(tpe),
+          isMutable = false
+        )
+      }
+    }
+    watpe.StructType(fields)
+  }
+
+  def transformTypedClosureType(tpe: ClosureType)(
+      implicit ctx: WasmContext): (watpe.SubType, watpe.SubType) = {
+    assert(!tpe.nullable)
+
+    val tpeNameString = tpe.show()
+
+    val funType = watpe.FunctionType(
+      watpe.RefType.struct :: tpe.paramTypes.map(TypeTransformer.transformParamType(_)),
+      TypeTransformer.transformResultType(tpe.resultType)
+    )
+    val funTypeID = genTypeID.forClosureFunType(tpe)
+    val funSubType = watpe.SubType(funTypeID, OriginalName("fun" + tpeNameString), funType)
+
+    val fields: List[watpe.StructField] = List(
+      watpe.StructField(
+        genFieldID.typedClosure.data,
+        OriginalName("data"),
+        watpe.RefType.struct,
+        isMutable = false
+      ),
+      watpe.StructField(
+        genFieldID.typedClosure.fun,
+        OriginalName("fun"),
+        watpe.RefType(funTypeID),
+        isMutable = false
+      )
+    )
+
+    val structTypeID = genTypeID.forClosureType(tpe)
+    val structType = watpe.StructType(fields)
+    val structSubType = watpe.SubType(structTypeID, OriginalName(tpeNameString), structType)
+
+    (funSubType, structSubType)
+  }
+
+  def inferTypeFromTypeRef(typeRef: TypeRef)(implicit ctx: WasmContext): Type = typeRef match {
+    case PrimRef(tpe) =>
+      tpe
+    case ClassRef(className) =>
+      if (className == ObjectClass || ctx.getClassInfo(className).kind.isJSType)
+        AnyType
+      else
+        ClassType(className, nullable = true, exact = false)
+    case typeRef: ArrayTypeRef =>
+      ArrayType(typeRef, nullable = true, exact = false)
+    case typeRef: TransientTypeRef =>
+      typeRef.tpe
   }
 }

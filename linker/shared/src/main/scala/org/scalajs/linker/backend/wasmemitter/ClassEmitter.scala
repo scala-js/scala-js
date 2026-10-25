@@ -1823,8 +1823,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     implicit val pos = exportDef.pos
 
     val methodName = exportDef.methodName
-    val paramTypes = methodName.paramTypeRefs.map(ctx.inferTypeFromTypeRef(_))
-    val resultType = ctx.inferTypeFromTypeRef(methodName.resultTypeRef)
+    val paramTypes = methodName.paramTypeRefs.map(inferTypeFromTypeRef(_))
+    val resultType = inferTypeFromTypeRef(methodName.resultTypeRef)
     val functionID = genFunctionID.forExport(exportDef.exportName)
     val methodFunctionID = genFunctionID.forMethod(
         MemberNamespace.PublicStatic, owningClass, methodName)

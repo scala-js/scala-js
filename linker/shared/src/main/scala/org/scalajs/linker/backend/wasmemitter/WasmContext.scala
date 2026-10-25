@@ -41,6 +41,7 @@ import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import EmbeddedConstants._
 import SpecialNames._
+import TypeTransformer._
 import VarGen._
 
 final class WasmContext(
@@ -126,20 +127,6 @@ final class WasmContext(
   def getClassInfo(name: ClassName): ClassInfo =
     preprocessResult.classInfos.getOrElse(name, throw new Error(s"Class not found: $name"))
 
-  def inferTypeFromTypeRef(typeRef: TypeRef): Type = typeRef match {
-    case PrimRef(tpe) =>
-      tpe
-    case ClassRef(className) =>
-      if (className == ObjectClass || getClassInfo(className).kind.isJSType)
-        AnyType
-      else
-        ClassType(className, nullable = true, exact = false)
-    case typeRef: ArrayTypeRef =>
-      ArrayType(typeRef, nullable = true, exact = false)
-    case typeRef: TransientTypeRef =>
-      typeRef.tpe
-  }
-
   /** Retrieves a unique identifier for a reflective proxy with the given name.
    *
    *  If no class defines a reflective proxy with the given name, returns `-1`.
@@ -153,52 +140,23 @@ final class WasmContext(
    *  `methodName`.
    */
   def tableFunctionType(methodName: MethodName): wanme.TypeID = {
-    // Project all the names with the same *signatures* onto a normalized `MethodName`
-    val normalizedName = MethodName(
-      normalizedSimpleMethodName,
-      methodName.paramTypeRefs,
-      methodName.resultTypeRef,
-      methodName.isReflectiveProxy
-    )
+    val normalizedName = normalizeTableMethodName(methodName)
 
-    tableFunctionTypes.getOrElseUpdate(
-      normalizedName, {
-        val typeID = genTypeID.forTableFunctionType(normalizedName)
-        val regularParamTyps = normalizedName.paramTypeRefs.map { typeRef =>
-          TypeTransformer.transformParamType(inferTypeFromTypeRef(typeRef))(this)
-        }
-        val resultType = TypeTransformer.transformResultType(
-            inferTypeFromTypeRef(normalizedName.resultTypeRef))(this)
-        mainRecType.addSubType(
-          typeID,
-          ClassEmitter.makeTableEntryTypeOriginalName(normalizedName),
-          watpe.FunctionType(watpe.RefType.any :: regularParamTyps, resultType)
-        )
-        typeID
-      }
-    )
+    tableFunctionTypes.getOrElseUpdate(normalizedName, {
+      val subType = transformTableFunctionType(normalizedName)(this)
+      mainRecType.addSubType(subType)
+      subType.id
+    })
   }
 
   def getClosureDataStructType(captureParamTypes: List[Type]): wanme.TypeID = {
-    closureDataTypes.getOrElseUpdate(
-      captureParamTypes, {
-        val fields: List[watpe.StructField] = {
-          for ((tpe, i) <- captureParamTypes.zipWithIndex) yield {
-            watpe.StructField(
-              genFieldID.captureParam(i),
-              NoOriginalName,
-              TypeTransformer.transformParamType(tpe)(this),
-              isMutable = false
-            )
-          }
-        }
-        val structTypeID = genTypeID.captureData(nextClosureDataTypeIndex)
-        nextClosureDataTypeIndex += 1
-        val structType = watpe.StructType(fields)
-        moduleBuilder.addRecType(structTypeID, NoOriginalName, structType)
-        structTypeID
-      }
-    )
+    closureDataTypes.getOrElseUpdate(captureParamTypes, {
+      val structType = transformClosureDataStructType(captureParamTypes)(this)
+      val structTypeID = genTypeID.captureData(nextClosureDataTypeIndex)
+      nextClosureDataTypeIndex += 1
+      moduleBuilder.addRecType(structTypeID, NoOriginalName, structType)
+      structTypeID
+    })
   }
 
   /** Generates the struct type for a `ClosureType`.
@@ -214,37 +172,12 @@ final class WasmContext(
     val tpe = tpe0.toNonNullable
 
     typedClosureTypes.getOrElseUpdate(tpe, {
-      implicit val ctx = this
+      val (funSubType, structSubType) = transformTypedClosureType(tpe)(this)
 
-      val tpeNameString = tpe.show()
+      mainRecType.addSubType(funSubType)
+      mainRecType.addSubType(structSubType)
 
-      val funType = watpe.FunctionType(
-        watpe.RefType.struct :: tpe.paramTypes.map(TypeTransformer.transformParamType(_)),
-        TypeTransformer.transformResultType(tpe.resultType)
-      )
-      val funTypeID = genTypeID.forClosureFunType(tpe)
-      mainRecType.addSubType(funTypeID, OriginalName("fun" + tpeNameString), funType)
-
-      val fields: List[watpe.StructField] = List(
-        watpe.StructField(
-          genFieldID.typedClosure.data,
-          OriginalName("data"),
-          watpe.RefType.struct,
-          isMutable = false
-        ),
-        watpe.StructField(
-          genFieldID.typedClosure.fun,
-          OriginalName("fun"),
-          watpe.RefType(funTypeID),
-          isMutable = false
-        )
-      )
-
-      val structTypeID = genTypeID.forClosureType(tpe)
-      val structType = watpe.StructType(fields)
-      mainRecType.addSubType(structTypeID, OriginalName(tpeNameString), structType)
-
-      (funTypeID, structTypeID)
+      (funSubType.id, structSubType.id)
     })
   }
 
