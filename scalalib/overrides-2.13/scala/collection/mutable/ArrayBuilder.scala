@@ -13,7 +13,6 @@
 package scala.collection
 package mutable
 
-import scala.collection.mutable.ArrayBuffer.resizeUp
 import scala.reflect.ClassTag
 import scala.runtime.BoxedUnit
 
@@ -42,6 +41,20 @@ sealed abstract class ArrayBuilder[T]
   protected[this] final def ensureSize(size: Int): Unit = {
     val newLen = resizeUp(capacity, size)
     if (newLen > 0) resize(newLen)
+  }
+
+  // Copy of ArrayBuffer.resizeUp upstream, which was introduced in 2.13.9
+  private[this] def resizeUp(arrayLen: Int, targetLen: Int): Int = {
+    import ArrayBuffer.DefaultInitialSize
+
+    // From PStatics.scala
+    val VM_MaxArraySize = 2147483645 // == `Int.MaxValue - 2`, hotspot limit
+
+    if (targetLen < 0) throw new RuntimeException(s"Overflow while resizing array of array-backed collection. Requested length: $targetLen; current length: $arrayLen; increase: ${targetLen - arrayLen}")
+    else if (targetLen <= arrayLen) -1
+    else if (targetLen > VM_MaxArraySize) throw new RuntimeException(s"Array of array-backed collection exceeds VM length limit of $VM_MaxArraySize. Requested length: $targetLen; current length: $arrayLen")
+    else if (arrayLen > VM_MaxArraySize / 2) VM_MaxArraySize
+    else math.max(targetLen, math.max(arrayLen * 2, DefaultInitialSize))
   }
 
   override final def sizeHint(size: Int): Unit = if (capacity < size) resize(size)
