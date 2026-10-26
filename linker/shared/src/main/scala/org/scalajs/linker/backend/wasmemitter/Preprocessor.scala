@@ -25,10 +25,11 @@ import org.scalajs.linker.standard.{CoreSpec, LinkedClass, LinkedTopLevelExport}
 
 import EmbeddedConstants._
 import WasmContext._
+import ClassInfo.ConcreteMethodInfo
 
 object Preprocessor {
   final class Result(
-      val classInfos: Map[ClassName, WasmContext.ClassInfo],
+      val classInfos: Map[ClassName, ClassInfo],
       val reflectiveProxies: Map[MethodName, Int],
       val privateJSFields: Map[FieldName, String],
       val itablesLength: Int
