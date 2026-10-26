@@ -41,23 +41,22 @@ import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import EmbeddedConstants._
 import SpecialNames._
+import TypeTransformer._
 import VarGen._
 
-final class WasmContext(
-    val coreSpec: CoreSpec,
-    val coreLib: CoreWasmLib,
+sealed abstract class WasmBaseContext(
+    final val coreSpec: CoreSpec,
+    final val coreLib: CoreWasmLib,
     preprocessResult: Preprocessor.Result
 ) {
-  import WasmContext._
+  final val useCustomDescriptors = coreSpec.wasmFeatures.experimentalUseCustomDescriptors
+  final val hasJSInterop: Boolean = coreSpec.moduleKind == ModuleKind.ESModule
 
-  val useCustomDescriptors = coreSpec.wasmFeatures.experimentalUseCustomDescriptors
-  val hasJSInterop: Boolean = coreSpec.moduleKind == ModuleKind.ESModule
-
-  val privateJSFields: Map[FieldName, String] = preprocessResult.privateJSFields
-  val itablesLength: Int = preprocessResult.itablesLength
+  final val privateJSFields: Map[FieldName, String] = preprocessResult.privateJSFields
+  final val itablesLength: Int = preprocessResult.itablesLength
 
   /** Hijacked classes that we must emit as real box classes. */
-  val hijackedClassesWithBoxes: Set[ClassName] = {
+  final val hijackedClassesWithBoxes: Set[ClassName] = {
     if (hasJSInterop) {
       Set(
         BoxedCharacterClass,
@@ -74,6 +73,84 @@ final class WasmContext(
       )
     }
   }
+
+  final val stringType: watpe.RefType =
+    if (hasJSInterop) watpe.RefType.extern // for all the JS string builtin functions
+    else watpe.RefType(genTypeID.StringStruct)
+
+  final def getClassInfoOption(name: ClassName): Option[ClassInfo] =
+    preprocessResult.classInfos.get(name)
+
+  final def getClassInfo(name: ClassName): ClassInfo =
+    preprocessResult.classInfos.getOrElse(name, throw new Error(s"Class not found: $name"))
+
+  /** Generates the struct type for a `ClosureType`.
+   *
+   *  @return
+   *    `(funTypeID, structTypeID)`, where `funTypeID` is the function type of
+   *    the `ref.func`s, and `structTypeID` is the struct type that contains
+   *    the capture data and the `ref.func` (i.e., the actual Wasm type of
+   *    values of the given `ClosureType`).
+   */
+  def genTypedClosureStructType(tpe: ClosureType): (wanme.TypeID, wanme.TypeID)
+}
+
+final class WasmMainRecTypeContext(
+    coreSpec: CoreSpec,
+    coreLib: CoreWasmLib,
+    preprocessResult: Preprocessor.Result
+) extends WasmBaseContext(coreSpec, coreLib, preprocessResult) {
+
+  private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
+  private val typedClosureTypes = LinkedHashMap.empty[ClosureType, (wanme.TypeID, wanme.TypeID)]
+
+  def generatedTableFunctionTypes: scala.collection.Map[MethodName, wanme.TypeID] =
+    tableFunctionTypes
+
+  def generatedTypedClosureTypes: scala.collection.Map[ClosureType, (wanme.TypeID, wanme.TypeID)] =
+    typedClosureTypes
+
+  /** The main `rectype` containing the object model types. */
+  val mainRecType: ModuleBuilder.RecTypeBuilder = new ModuleBuilder.RecTypeBuilder
+
+  /** Adds or reuses a function type for a table function.
+   *
+   *  Table function types are part of the main `rectype`, and have names derived from the
+   *  `methodName`.
+   */
+  def tableFunctionType(methodName: MethodName): wanme.TypeID = {
+    val normalizedName = TypeTransformer.normalizeTableMethodName(methodName)
+
+    tableFunctionTypes.getOrElseUpdate(normalizedName, {
+      val subType = TypeTransformer.transformTableFunctionType(normalizedName)(this)
+      mainRecType.addSubType(subType)
+      subType.id
+    })
+  }
+
+  def genTypedClosureStructType(tpe0: ClosureType): (wanme.TypeID, wanme.TypeID) = {
+    // Normalize to the non-nullable variant
+    val tpe = tpe0.toNonNullable
+
+    typedClosureTypes.getOrElseUpdate(tpe, {
+      val (funSubType, structSubType) = TypeTransformer.transformTypedClosureType(tpe)(this)
+
+      mainRecType.addSubType(funSubType)
+      mainRecType.addSubType(structSubType)
+
+      (funSubType.id, structSubType.id)
+    })
+  }
+}
+
+final class WasmContext(
+    coreSpec: CoreSpec,
+    coreLib: CoreWasmLib,
+    preprocessResult: Preprocessor.Result,
+    mainRecTypeTableFunctionTypes: scala.collection.Map[MethodName, wanme.TypeID],
+    mainRecTypedClosureTypes: scala.collection.Map[ClosureType, (wanme.TypeID, wanme.TypeID)]
+) extends WasmBaseContext(coreSpec, coreLib, preprocessResult) {
+  import WasmContext._
 
   private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
   private val closureDataTypes = LinkedHashMap.empty[List[Type], wanme.TypeID]
@@ -107,38 +184,11 @@ final class WasmContext(
   private val _funcDeclarations: mutable.LinkedHashSet[wanme.FunctionID] =
     new mutable.LinkedHashSet()
 
-  val stringType: watpe.RefType =
-    if (hasJSInterop) watpe.RefType.extern // for all the JS string builtin functions
-    else watpe.RefType(genTypeID.StringStruct)
-
   val stringPool: StringPool =
     if (hasJSInterop) new JSStringPool
     else new DataStringPool
 
   val constantArrayPool: ConstantArrayPool = new ConstantArrayPool
-
-  /** The main `rectype` containing the object model types. */
-  val mainRecType: ModuleBuilder.RecTypeBuilder = new ModuleBuilder.RecTypeBuilder
-
-  def getClassInfoOption(name: ClassName): Option[ClassInfo] =
-    preprocessResult.classInfos.get(name)
-
-  def getClassInfo(name: ClassName): ClassInfo =
-    preprocessResult.classInfos.getOrElse(name, throw new Error(s"Class not found: $name"))
-
-  def inferTypeFromTypeRef(typeRef: TypeRef): Type = typeRef match {
-    case PrimRef(tpe) =>
-      tpe
-    case ClassRef(className) =>
-      if (className == ObjectClass || getClassInfo(className).kind.isJSType)
-        AnyType
-      else
-        ClassType(className, nullable = true, exact = false)
-    case typeRef: ArrayTypeRef =>
-      ArrayType(typeRef, nullable = true, exact = false)
-    case typeRef: TransientTypeRef =>
-      typeRef.tpe
-  }
 
   /** Retrieves a unique identifier for a reflective proxy with the given name.
    *
@@ -153,98 +203,50 @@ final class WasmContext(
    *  `methodName`.
    */
   def tableFunctionType(methodName: MethodName): wanme.TypeID = {
-    // Project all the names with the same *signatures* onto a normalized `MethodName`
-    val normalizedName = MethodName(
-      normalizedSimpleMethodName,
-      methodName.paramTypeRefs,
-      methodName.resultTypeRef,
-      methodName.isReflectiveProxy
-    )
+    val normalizedName = normalizeTableMethodName(methodName)
 
-    tableFunctionTypes.getOrElseUpdate(
-      normalizedName, {
-        val typeID = genTypeID.forTableFunctionType(normalizedName)
-        val regularParamTyps = normalizedName.paramTypeRefs.map { typeRef =>
-          TypeTransformer.transformParamType(inferTypeFromTypeRef(typeRef))(this)
-        }
-        val resultType = TypeTransformer.transformResultType(
-            inferTypeFromTypeRef(normalizedName.resultTypeRef))(this)
-        mainRecType.addSubType(
-          typeID,
-          ClassEmitter.makeTableEntryTypeOriginalName(normalizedName),
-          watpe.FunctionType(watpe.RefType.any :: regularParamTyps, resultType)
-        )
-        typeID
-      }
-    )
+    mainRecTypeTableFunctionTypes.getOrElse(normalizedName, {
+      tableFunctionTypes.getOrElseUpdate(normalizedName, {
+        val subType = transformTableFunctionType(normalizedName)(this)
+
+        /* If the table function type is not in the main rec type it is either:
+         * - A reflective proxy type (the tables are untyped, usage-site casts)
+         * - An unused bridge
+         *
+         * Both of these are safe to emit as separate rectype.
+         */
+        moduleBuilder.addRecType(subType)
+        subType.id
+      })
+    })
   }
 
   def getClosureDataStructType(captureParamTypes: List[Type]): wanme.TypeID = {
-    closureDataTypes.getOrElseUpdate(
-      captureParamTypes, {
-        val fields: List[watpe.StructField] = {
-          for ((tpe, i) <- captureParamTypes.zipWithIndex) yield {
-            watpe.StructField(
-              genFieldID.captureParam(i),
-              NoOriginalName,
-              TypeTransformer.transformParamType(tpe)(this),
-              isMutable = false
-            )
-          }
-        }
-        val structTypeID = genTypeID.captureData(nextClosureDataTypeIndex)
-        nextClosureDataTypeIndex += 1
-        val structType = watpe.StructType(fields)
-        moduleBuilder.addRecType(structTypeID, NoOriginalName, structType)
-        structTypeID
-      }
-    )
+    closureDataTypes.getOrElseUpdate(captureParamTypes, {
+      val structType = transformClosureDataStructType(captureParamTypes)(this)
+      val structTypeID = genTypeID.captureData(nextClosureDataTypeIndex)
+      nextClosureDataTypeIndex += 1
+      moduleBuilder.addRecType(structTypeID, NoOriginalName, structType)
+      structTypeID
+    })
   }
 
-  /** Generates the struct type for a `ClosureType`.
-   *
-   *  @return
-   *    `(funTypeID, structTypeID)`, where `funTypeID` is the function type of
-   *    the `ref.func`s, and `structTypeID` is the struct type that contains
-   *    the capture data and the `ref.func` (i.e., the actual Wasm type of
-   *    values of the given `ClosureType`).
-   */
   def genTypedClosureStructType(tpe0: ClosureType): (wanme.TypeID, wanme.TypeID) = {
     // Normalize to the non-nullable variant
     val tpe = tpe0.toNonNullable
 
-    typedClosureTypes.getOrElseUpdate(tpe, {
-      implicit val ctx = this
+    mainRecTypedClosureTypes.getOrElse(tpe, {
+      typedClosureTypes.getOrElseUpdate(tpe, {
+        val (funSubType, structSubType) = transformTypedClosureType(tpe)(this)
 
-      val tpeNameString = tpe.show()
+        /* If the typed closure is not in the main rec type, it is not referred
+         * to by any class fields. Therefore, it is safe to emit it as separate rectype.
+         */
+        moduleBuilder.addRecType(funSubType)
+        moduleBuilder.addRecType(structSubType)
 
-      val funType = watpe.FunctionType(
-        watpe.RefType.struct :: tpe.paramTypes.map(TypeTransformer.transformParamType(_)),
-        TypeTransformer.transformResultType(tpe.resultType)
-      )
-      val funTypeID = genTypeID.forClosureFunType(tpe)
-      mainRecType.addSubType(funTypeID, OriginalName("fun" + tpeNameString), funType)
-
-      val fields: List[watpe.StructField] = List(
-        watpe.StructField(
-          genFieldID.typedClosure.data,
-          OriginalName("data"),
-          watpe.RefType.struct,
-          isMutable = false
-        ),
-        watpe.StructField(
-          genFieldID.typedClosure.fun,
-          OriginalName("fun"),
-          watpe.RefType(funTypeID),
-          isMutable = false
-        )
-      )
-
-      val structTypeID = genTypeID.forClosureType(tpe)
-      val structType = watpe.StructType(fields)
-      mainRecType.addSubType(structTypeID, OriginalName(tpeNameString), structType)
-
-      (funTypeID, structTypeID)
+        (funSubType.id, structSubType.id)
+      })
     })
   }
 
