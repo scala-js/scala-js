@@ -134,7 +134,7 @@ class IntegerDivisionsFuzzTest {
     val optimized = integerDivisions.makeOptimizedDivision(op, divisor)
 
     if (divisor == 0) {
-      val UnaryOp(UnaryOp.Throw, _) = optimized // meant as an assertion
+      val UnaryOp(UnaryOp.Throw, _) = optimized: @unchecked // meant as an assertion
     } else {
       def test(numValue: Int): Unit =
         assertEvalEquals(reference, optimized, IntLiteral(numValue))
@@ -174,7 +174,7 @@ class IntegerDivisionsFuzzTest {
     val optimized = integerDivisions.makeOptimizedDivision(op, divisor)
 
     if (divisor == 0L) {
-      val UnaryOp(UnaryOp.Throw, _) = optimized // meant as an assertion
+      val UnaryOp(UnaryOp.Throw, _) = optimized: @unchecked // meant as an assertion
     } else {
       def test(numValue: Long): Unit =
         assertEvalEquals(reference, optimized, LongLiteral(numValue))
