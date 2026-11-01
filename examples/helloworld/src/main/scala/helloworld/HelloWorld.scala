@@ -19,19 +19,18 @@ object HelloWorld {
     LinkingInfo.linkTimeIf(LinkingInfo.moduleKind == LinkingInfo.ModuleKind.WasmModule) {
       val s = String.valueOf(x)
       val len = s.length()
-      val codeUnits = new Array[Short](len)
       var i = 0
       while (i != len) {
-        codeUnits(i) = s.charAt(i).toShort
+        wasmPrintc(s.charAt(i).toInt)
         i += 1
       }
-      wasmPrintln(codeUnits)
+      wasmPrintc('\n'.toInt)
     } {
       System.out.println(x)
     }
   }
 
-  @scala.scalajs.wasm.annotation.WasmImport("scalajs:non-standard", "println")
-  def wasmPrintln(line: Array[Short]): Unit =
+  @scala.scalajs.wasm.annotation.WasmImport("./../../../../wasm-module-support.mjs", "printc")
+  def wasmPrintc(c: Int): Unit =
     scala.scalajs.wasm.native
 }

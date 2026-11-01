@@ -230,49 +230,7 @@ object MyScalaJSPlugin extends AutoPlugin {
       },
   )
 
-  /* Overwrite the computation of jsEnvInput done by the public plugin in order
-   * to deal with WasmModules with our private WasmNodeJSEnv.
-   */
-  private val configSettings: Seq[Setting[_]] = Def.settings(
-      /* Do not inherit jsEnvInput from the parent configuration.
-       * Instead, always derive it straight from the Zero configuration scope.
-       */
-      jsEnvInput := {
-        (Scope(This, Zero, This, This) / jsEnvInput).value
-      },
-
-      // Add the Scala.js linked file to the Input for the JSEnv.
-      jsEnvInput += {
-        val linkingResult = scalaJSLinkerResult.value
-
-        val report = linkingResult.data
-
-        val mainModule = report.publicModules.find(_.moduleID == "main").getOrElse {
-          throw new MessageOnlyException(
-              "Cannot determine `jsEnvInput`: Linking result does not have a " +
-              "module named `main`. Set jsEnvInput manually?\n" +
-              s"Full report:\n$report")
-        }
-
-        val linkerOutputDir = linkingResult.get(scalaJSLinkerOutputDirectory.key).get
-        val path = (linkerOutputDir / mainModule.moduleFileName).toPath
-
-        mainModule.moduleKind match {
-          case ModuleKind.NoModule       => Input.Script(path)
-          case ModuleKind.ESModule       => Input.ESModule(path)
-          case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
-
-          case ModuleKind.WasmModule =>
-            // !!! Here we deviate from the plugin
-            WasmInput.WasmModule(path)
-        }
-      },
-  )
-
   override def projectSettings: Seq[Setting[_]] = Def.settings(
-      inConfig(Compile)(configSettings),
-      inConfig(Test)(configSettings),
-
       /* Remove libraryDependencies on ourselves; we use .dependsOn() instead
        * inside this build.
        */
@@ -294,10 +252,7 @@ object MyScalaJSPlugin extends AutoPlugin {
         } else {
           baseConfig
         }
-        if (scalaJSLinkerConfig.value.moduleKind == ModuleKind.WasmModule)
-          new WasmNodeJSEnv(config)
-        else
-          new NodeJSEnv(config)
+        new NodeJSEnv(config)
       },
 
       Compile / jsEnvInput :=
