@@ -749,7 +749,8 @@ private[emitter] object CoreJSLib {
         defFromExport(VarField.floatToBits, "floatToBits") :::
         defFromExport(VarField.doubleFromBits, "doubleFromBits") :::
         defFromExport(VarField.doubleToBitsLo, "doubleToBitsLo") :::
-        defFromExport(VarField.doubleToBitsHi, "doubleToBitsHi")
+        defFromExport(VarField.doubleToBitsHi, "doubleToBitsHi") :::
+        defFromExport(VarField.longMulHi, "longMulHi")
       }
     }
 

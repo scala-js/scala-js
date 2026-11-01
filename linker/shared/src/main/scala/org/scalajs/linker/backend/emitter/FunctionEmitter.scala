@@ -1242,8 +1242,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
               case Transient(ExtractLongHi(longValue)) =>
                 Transient(ExtractLongHi(rec(longValue)))
-              case Transient(WasmSupportDoubleToBits(doubleValue, isHigh)) =>
-                Transient(WasmSupportDoubleToBits(rec(doubleValue), isHigh))
+              case Transient(t @ WasmSupportOp(op, args)) if t.isPure || noExtractYet =>
+                Transient(WasmSupportOp(op, recs(args)))
               case Transient(Cast(expr, tpe)) =>
                 Transient(Cast(rec(expr), tpe))
               case Transient(ZeroOf(runtimeClass)) =>
@@ -1505,8 +1505,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         // Transients preserving pureness (modulo NPE)
         case Transient(ExtractLongHi(longValue)) =>
           test(longValue)
-        case Transient(WasmSupportDoubleToBits(doubleValue, _)) =>
-          test(doubleValue)
         case Transient(Cast(expr, _)) =>
           test(expr)
         case Transient(ZeroOf(runtimeClass)) =>
@@ -1553,6 +1551,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         // Transients with side effects.
         case Transient(TypedArrayToArray(expr, primRef)) =>
           allowSideEffects && test(expr) // may TypeError
+
+        // wasmSupport operations
+        case Transient(t @ WasmSupportOp(_, args)) =>
+          val effectsOK = allowSideEffects || {
+            if (allowUnpure) t.isSideEffectFree
+            else t.isPure
+          }
+          effectsOK && testAll(args)
 
         // Array operations with conditional exceptions
         case NewArray(tpe, length) =>
@@ -2201,9 +2207,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             redo(Transient(ExtractLongHi(newLongValue)))(env)
           }
 
-        case Transient(WasmSupportDoubleToBits(doubleValue, isHigh)) =>
-          unnest(doubleValue) { (newDoubleValue, env) =>
-            redo(Transient(WasmSupportDoubleToBits(newDoubleValue, isHigh)))(env)
+        case Transient(WasmSupportOp(op, lhs)) =>
+          unnest(lhs) { (newLhs, env) =>
+            redo(Transient(WasmSupportOp(op, newLhs)))(env)
           }
 
         case Transient(Cast(expr, tpe)) =>
@@ -3453,13 +3459,24 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               js.Block(lo, hi)
           }
 
-        case Transient(WasmSupportDoubleToBits(doubleValue, isHigh)) =>
-          assert(useWasmSupport && !useBigIntForLongs, "RuntimeLong with wasmSupport only")
-          val newDoubleValue = transformExprNoChar(doubleValue)
-          if (isHigh)
-            genCallHelper(VarField.doubleToBitsHi, newDoubleValue)
-          else
-            genCallHelper(VarField.doubleToBitsLo, newDoubleValue)
+        case Transient(WasmSupportOp(op, args)) =>
+          import WasmSupportOp._
+
+          assert(useWasmSupport, "wasmSupport only")
+          val helper = op match {
+            case DoubleToBitsLo => VarField.doubleToBitsLo
+            case DoubleToBitsHi => VarField.doubleToBitsHi
+            case LongMulHi      => VarField.longMulHi
+          }
+          val newArgs = op match {
+            case LongMulHi =>
+              val (alo, ahi) = transformLongExpr(args(0))
+              val (blo, bhi) = transformLongExpr(args(1))
+              List(alo, ahi, blo, bhi)
+            case _ =>
+              args.map(transformExprNoChar(_))
+          }
+          genCallHelper(helper, newArgs: _*)
 
         case Transient(Cast(expr, tpe)) =>
           val newExpr = transformExpr(expr, preserveChar = true)

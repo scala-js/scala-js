@@ -62,23 +62,39 @@ object Transients {
     }
   }
 
-  final case class WasmSupportDoubleToBits(value: Tree, isHigh: Boolean) extends Transient.Value {
+  final case class WasmSupportOp(op: WasmSupportOp.Code, args: List[Tree])
+      extends Transient.Value {
+
+    import WasmSupportOp._
+
     val tpe = IntType
 
+    def isPure: Boolean = true
+
+    def isSideEffectFree: Boolean = true
+
     def traverse(traverser: Traverser): Unit =
-      traverser.traverse(value)
+      args.foreach(traverser.traverse(_))
 
     def transform(transformer: Transformer)(implicit pos: Position): Tree =
-      Transient(WasmSupportDoubleToBits(transformer.transform(value), isHigh))
+      Transient(WasmSupportOp(op, transformer.transformTrees(args)))
 
     def printIR(out: IRTreePrinter): Unit = {
-      if (isHigh)
-        out.print("<double-to-bits-hi>(")
-      else
-        out.print("<double-to-bits-lo>(")
-      out.print(value)
-      out.print(")")
+      out.print(op match {
+        case DoubleToBitsLo => "<double-to-bits-lo>"
+        case DoubleToBitsHi => "<double-to-bits-hi>"
+        case LongMulHi      => "<long-mul-hi>"
+      })
+      out.printArgs(args)
     }
+  }
+
+  object WasmSupportOp {
+    type Code = Int
+
+    final val DoubleToBitsLo = 0
+    final val DoubleToBitsHi = 1
+    final val LongMulHi = 2
   }
 
   /** Casts `expr` to the given `tpe`, without any check.

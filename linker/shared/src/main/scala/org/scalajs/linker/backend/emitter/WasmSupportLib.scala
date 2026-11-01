@@ -55,7 +55,8 @@ object WasmSupportLib {
       val floatFromBits = SimpleFunctionID("floatFromBits")
       val doubleToBitsLo = SimpleFunctionID("doubleToBitsLo")
       val doubleToBitsHi = SimpleFunctionID("doubleToBitsHi")
-      val doubleFromBits = Builder.SimpleFunctionID("doubleFromBits")
+      val doubleFromBits = SimpleFunctionID("doubleFromBits")
+      val longMulHi = SimpleFunctionID("longMulHi")
     }
 
     private def newFunctionBuilder(functionID: FunctionID): FunctionBuilder =
@@ -72,6 +73,7 @@ object WasmSupportLib {
       genDoubleToBitsLo()
       genDoubleToBitsHi()
       genDoubleFromBits()
+      genLongMulHi()
     }
 
     private def genFloatToBits(): Unit = {
@@ -115,9 +117,7 @@ object WasmSupportLib {
 
       fb += LocalGet(x)
       fb += I64ReinterpretF64
-      fb += I64Const(32L)
-      fb += I64ShrU
-      fb += I32WrapI64
+      genExtractLongHi(fb)
 
       fb.buildAndAddToModule()
     }
@@ -128,6 +128,31 @@ object WasmSupportLib {
       val hi = fb.addParam("hi", Int32)
       fb.setResultType(Float64)
 
+      genLocalGetLongArg(fb, lo, hi)
+      fb += F64ReinterpretI64
+
+      fb.buildAndAddToModule()
+    }
+
+    private def genLongMulHi(): Unit = {
+      val fb = newExportedFunctionBuilder(funcs.longMulHi)
+      val alo = fb.addParam("alo", Int32)
+      val ahi = fb.addParam("ahi", Int32)
+      val blo = fb.addParam("blo", Int32)
+      val bhi = fb.addParam("bhi", Int32)
+      fb.setResultType(Int32)
+
+      genLocalGetLongArg(fb, alo, ahi)
+      genLocalGetLongArg(fb, blo, bhi)
+      fb += I64Mul
+      genExtractLongHi(fb)
+
+      fb.buildAndAddToModule()
+    }
+
+    private def genLocalGetLongArg(fb: FunctionBuilder,
+        lo: LocalID, hi: LocalID): Unit = {
+
       fb += LocalGet(lo)
       fb += I64ExtendI32U
       fb += LocalGet(hi)
@@ -135,9 +160,12 @@ object WasmSupportLib {
       fb += I64Const(32L)
       fb += I64Shl
       fb += I64Or
-      fb += F64ReinterpretI64
+    }
 
-      fb.buildAndAddToModule()
+    private def genExtractLongHi(fb: FunctionBuilder): Unit = {
+      fb += I64Const(32)
+      fb += I64ShrU
+      fb += I32WrapI64
     }
   }
 }

@@ -3992,10 +3992,10 @@ private[optimizer] abstract class OptimizerCore(
           case Double_toBits =>
             if (useWasmSupport) {
               withNewTempLocalDef(arg) { (argLocalDef, cont1) =>
-                val lo = PreTransTree(Transient(WasmSupportDoubleToBits(
-                    argLocalDef.newReplacement, isHigh = false)))
-                val hi = PreTransTree(Transient(WasmSupportDoubleToBits(
-                    argLocalDef.newReplacement, isHigh = true)))
+                val lo = PreTransTree(Transient(WasmSupportOp(
+                    WasmSupportOp.DoubleToBitsLo, List(argLocalDef.newReplacement))))
+                val hi = PreTransTree(Transient(WasmSupportOp(
+                    WasmSupportOp.DoubleToBitsHi, List(argLocalDef.newReplacement))))
                 pretransformPackLong(lo, hi)(cont1)
               }(cont)
             } else if (config.coreSpec.esFeatures.esVersion >= ESVersion.ES2015) {
@@ -4039,7 +4039,23 @@ private[optimizer] abstract class OptimizerCore(
         (op: @switch) match {
           case Long_+ => expandLongOpSplit2(LongImpl.add, lhs, rhs)
           case Long_- => expandLongOpSplit2(LongImpl.sub, lhs, rhs)
-          case Long_* => expandLongOpSplit2(LongImpl.mul, lhs, rhs)
+
+          case Long_* =>
+            if (useWasmSupport) {
+              withNewTempLocalDefs(List(lhs, rhs)) { (argLocalDefs, cont1) =>
+                val List(lhsLocalDef, rhsLocalDef) = argLocalDefs: @unchecked
+                val lo = foldBinaryOp(BinaryOp.Int_*,
+                    foldUnaryOp(UnaryOp.LongToInt, lhsLocalDef.toPreTransform),
+                    foldUnaryOp(UnaryOp.LongToInt, rhsLocalDef.toPreTransform))
+                val hi = PreTransTree(Transient(WasmSupportOp(
+                    WasmSupportOp.LongMulHi,
+                    List(lhsLocalDef.newReplacement, rhsLocalDef.newReplacement))))
+                pretransformPackLong(lo, hi)(cont1)
+              }(cont)
+            } else {
+              expandLongOpSplit2(LongImpl.mul, lhs, rhs)
+            }
+
           case Long_/ => expandLongOpSplit2(LongImpl.divide, lhs, rhs)
           case Long_% => expandLongOpSplit2(LongImpl.remainder, lhs, rhs)
 
