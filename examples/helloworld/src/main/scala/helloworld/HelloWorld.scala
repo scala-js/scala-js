@@ -42,6 +42,7 @@ object HelloWorld {
   @noinline def work(xs: Array[Float], out: Array[Int]): Unit = {
     for (i <- 0 until xs.length)
       //out(i) = JFloat.floatToIntBits(xs(i) + 1.5f)
+      //out(i) = ((Long.MaxValue / Math.nextUp(xs(i).toDouble).toLong) >>> 32).toInt
       out(i) = Math.nextUp(xs(i).toDouble).toInt
   }
 

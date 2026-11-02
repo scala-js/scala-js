@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.backend.emitter
 
+import scala.annotation.switch
+
 import org.scalajs.ir.Position
 import org.scalajs.ir.Printers._
 import org.scalajs.ir.Transformers._
@@ -69,9 +71,28 @@ object Transients {
 
     val tpe = IntType
 
-    def isPure: Boolean = true
+    def isPure: Boolean = (op: @switch) match {
+      case LongResultHi | LongDivS | LongRemS | LongDivU | LongRemU =>
+        false
+      case _ =>
+        true
+    }
 
-    def isSideEffectFree: Boolean = true
+    def isSideEffectFree: Boolean = (op: @switch) match {
+      case LongDivS | LongRemS | LongDivU | LongRemU =>
+        false
+      case _ =>
+        true
+    }
+
+    def paramTypeRefs: List[TypeRef] = (op: @switch) match {
+      case LongResultHi =>
+        Nil
+      case DoubleToBitsLo | DoubleToBitsHi =>
+        OneDoubleRef
+      case LongMulHi | LongDivS | LongRemS | LongDivU | LongRemU =>
+        TwoLongRefs
+    }
 
     def traverse(traverser: Traverser): Unit =
       args.foreach(traverser.traverse(_))
@@ -81,9 +102,14 @@ object Transients {
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print(op match {
+        case LongResultHi   => "<long-result-hi>"
         case DoubleToBitsLo => "<double-to-bits-lo>"
         case DoubleToBitsHi => "<double-to-bits-hi>"
         case LongMulHi      => "<long-mul-hi>"
+        case LongDivS       => "<long-divs>"
+        case LongRemS       => "<long-rems>"
+        case LongDivU       => "<long-divu>"
+        case LongRemU       => "<long-remu>"
       })
       out.printArgs(args)
     }
@@ -92,9 +118,17 @@ object Transients {
   object WasmSupportOp {
     type Code = Int
 
-    final val DoubleToBitsLo = 0
-    final val DoubleToBitsHi = 1
-    final val LongMulHi = 2
+    final val LongResultHi = 0
+    final val DoubleToBitsLo = 1
+    final val DoubleToBitsHi = 2
+    final val LongMulHi = 3
+    final val LongDivS = 4
+    final val LongRemS = 5
+    final val LongDivU = 6
+    final val LongRemU = 7
+
+    private val OneDoubleRef = List(DoubleRef)
+    private val TwoLongRefs = List(LongRef, LongRef)
   }
 
   /** Casts `expr` to the given `tpe`, without any check.

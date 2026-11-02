@@ -31,6 +31,7 @@ object WasmSupportLib {
   val moduleBytes: Array[Byte] = new Builder().build()
 
   private object Builder {
+    private final case class SimpleGlobalID(name: String) extends GlobalID
     private final case class SimpleFunctionID(name: String) extends FunctionID
   }
 
@@ -42,6 +43,8 @@ object WasmSupportLib {
     private val moduleBuilder = new ModuleBuilder()
 
     def build(): Array[Byte] = {
+      genImports()
+      genGlobals()
       genFunctions()
 
       val buffer = BinaryWriter.write(moduleBuilder.build(), emitDebugInfo = false)
@@ -50,13 +53,54 @@ object WasmSupportLib {
       bytes
     }
 
+    private object globals {
+      val longResultHi = SimpleGlobalID("longResultHi")
+    }
+
     private object funcs {
+      val throwDivByZero = SimpleFunctionID("throwDivByZero")
+
       val floatToBits = SimpleFunctionID("floatToBits")
       val floatFromBits = SimpleFunctionID("floatFromBits")
       val doubleToBitsLo = SimpleFunctionID("doubleToBitsLo")
       val doubleToBitsHi = SimpleFunctionID("doubleToBitsHi")
       val doubleFromBits = SimpleFunctionID("doubleFromBits")
       val longMulHi = SimpleFunctionID("longMulHi")
+      val longDivS = SimpleFunctionID("longDivS")
+      val longRemS = SimpleFunctionID("longRemS")
+      val longDivU = SimpleFunctionID("longDivU")
+      val longRemU = SimpleFunctionID("longRemU")
+    }
+
+    private def addImportedFunc(functionID: SimpleFunctionID, typeID: TypeID): Unit = {
+      moduleBuilder.addImport(Import(
+        module = "",
+        name = functionID.name,
+        ImportDesc.Func(functionID, NoOriginalName, typeID)
+      ))
+    }
+
+    private def addImportedFunc(functionID: SimpleFunctionID, sig: FunctionType): Unit =
+      addImportedFunc(functionID, moduleBuilder.functionTypeToTypeID(sig))
+
+    private def genImports(): Unit = {
+      addImportedFunc(funcs.throwDivByZero, FunctionType(Nil, Nil))
+    }
+
+    private def addExportedGlobal(globalID: SimpleGlobalID, isMutable: Boolean,
+        tpe: Type, init: Expr): Unit = {
+
+      moduleBuilder.addExport(Export(globalID.name, ExportDesc.Global(globalID)))
+      moduleBuilder.addGlobal(Global(globalID, NoOriginalName, isMutable, tpe, init))
+    }
+
+    private def genGlobals(): Unit = {
+      addExportedGlobal(
+        globals.longResultHi,
+        isMutable = true,
+        Int32,
+        Expr(List(I32Const(0)))
+      )
     }
 
     private def newFunctionBuilder(functionID: FunctionID): FunctionBuilder =
@@ -74,6 +118,7 @@ object WasmSupportLib {
       genDoubleToBitsHi()
       genDoubleFromBits()
       genLongMulHi()
+      genLongDivFuncs()
     }
 
     private def genFloatToBits(): Unit = {
@@ -148,6 +193,71 @@ object WasmSupportLib {
       genExtractLongHi(fb)
 
       fb.buildAndAddToModule()
+    }
+
+    private def genLongDivFuncs(): Unit = {
+      val functionIDsAndInstrs: List[(SimpleFunctionID, SimpleInstr)] = List(
+        funcs.longDivS -> I64DivS,
+        funcs.longRemS -> I64RemS,
+        funcs.longDivU -> I64DivU,
+        funcs.longRemU -> I64RemU
+      )
+
+      for ((functionID, divInstr) <- functionIDsAndInstrs) {
+        val fb = newExportedFunctionBuilder(functionID)
+        val alo = fb.addParam("alo", Int32)
+        val ahi = fb.addParam("ahi", Int32)
+        val blo = fb.addParam("blo", Int32)
+        val bhi = fb.addParam("bhi", Int32)
+        fb.setResultType(Int32)
+
+        /* Used both for b and then for the result.
+         * The blob we generate is opaque to any downstream optimizer,
+         * so exceptionally we are doing these low-level tricks ourselves.
+         */
+        val temp = fb.addLocal("temp", Int64)
+
+        genLocalGetLongArg(fb, blo, bhi)
+        fb += LocalTee(temp)
+
+        // Division by 0
+        fb += I64Eqz
+        fb.ifThen() {
+          fb += Call(funcs.throwDivByZero)
+          fb += Unreachable
+        }
+
+        // Compute the result and leave it on the stack
+        if (divInstr == I64DivS) {
+          // Special-case when dividing by -1; need to handle the overflow case
+          fb += LocalGet(temp)
+          fb += I64Const(-1L)
+          fb += I64Eq
+          fb.ifThenElse(Int64) {
+            fb += I64Const(0L)
+            genLocalGetLongArg(fb, alo, ahi)
+            fb += I64Sub
+          } {
+            genLocalGetLongArg(fb, alo, ahi)
+            fb += LocalGet(temp)
+            fb += divInstr
+          }
+        } else {
+          // Regular path
+          genLocalGetLongArg(fb, alo, ahi)
+          fb += LocalGet(temp)
+          fb += divInstr
+        }
+
+        // Separate (lo, hi)
+        fb += LocalTee(temp)
+        genExtractLongHi(fb)
+        fb += GlobalSet(globals.longResultHi)
+        fb += LocalGet(temp)
+        fb += I32WrapI64
+
+        fb.buildAndAddToModule()
+      }
     }
 
     private def genLocalGetLongArg(fb: FunctionBuilder,

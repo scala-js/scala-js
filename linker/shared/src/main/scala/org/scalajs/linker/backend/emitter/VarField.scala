@@ -318,9 +318,15 @@ private[emitter] object VarField {
 
   // wasmSupport-only helpers
 
+  final val longResultHi = mk("$longResultHi")
+
   final val doubleToBitsLo = mk("$doubleToBitsLo")
   final val doubleToBitsHi = mk("$doubleToBitsHi")
   final val longMulHi = mk("$longMulHi")
+  final val longDivS = mk("$longDivS")
+  final val longDivU = mk("$longDivU")
+  final val longRemS = mk("$longRemS")
+  final val longRemU = mk("$longRemU")
 
   // Polyfills
 

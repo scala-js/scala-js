@@ -1980,6 +1980,9 @@ private[optimizer] abstract class OptimizerCore(
     case Transient(GetFPBitsDataView) =>
       Skip()(stat.pos)
 
+    case Transient(t: WasmSupportOp) if t.isSideEffectFree =>
+      Skip()(stat.pos)
+
     case _ =>
       if (stat.tpe.isInstanceOf[RecordType]) {
         // #5246 Last resort not to return a RecordType'd tree
@@ -4056,8 +4059,28 @@ private[optimizer] abstract class OptimizerCore(
               expandLongOpSplit2(LongImpl.mul, lhs, rhs)
             }
 
-          case Long_/ => expandLongOpSplit2(LongImpl.divide, lhs, rhs)
-          case Long_% => expandLongOpSplit2(LongImpl.remainder, lhs, rhs)
+          case Long_/ | Long_% | Long_unsigned_/ | Long_unsigned_% =>
+            if (useWasmSupport) {
+              val wasmSupportOp = (op: @switch) match {
+                case Long_/          => WasmSupportOp.LongDivS
+                case Long_%          => WasmSupportOp.LongRemS
+                case Long_unsigned_/ => WasmSupportOp.LongDivU
+                case Long_unsigned_% => WasmSupportOp.LongRemU
+              }
+              val lo = PreTransTree(Transient(WasmSupportOp(
+                  wasmSupportOp,
+                  List(finishTransformExpr(lhs), finishTransformExpr(rhs)))))
+              val hi = PreTransTree(Transient(WasmSupportOp(WasmSupportOp.LongResultHi, Nil)))
+              pretransformPackLong(lo, hi)(cont)
+            } else {
+              val methodName = (op: @switch) match {
+                case Long_/          => LongImpl.divide
+                case Long_%          => LongImpl.remainder
+                case Long_unsigned_/ => LongImpl.divideUnsigned
+                case Long_unsigned_% => LongImpl.remainderUnsigned
+              }
+              expandLongOpSplit2(methodName, lhs, rhs)
+            }
 
           case Long_& => expandLongOpSplit2(LongImpl.and, lhs, rhs)
           case Long_| => expandLongOpSplit2(LongImpl.or, lhs, rhs)
@@ -4073,9 +4096,6 @@ private[optimizer] abstract class OptimizerCore(
           case Long_<= => expandLongOpSplit2(LongImpl.le, lhs, rhs)
           case Long_>  => expandLongOpSplit2(LongImpl.gt, lhs, rhs)
           case Long_>= => expandLongOpSplit2(LongImpl.ge, lhs, rhs)
-
-          case Long_unsigned_/ => expandLongOpSplit2(LongImpl.divideUnsigned, lhs, rhs)
-          case Long_unsigned_% => expandLongOpSplit2(LongImpl.remainderUnsigned, lhs, rhs)
 
           case Long_unsigned_<  => expandLongOpSplit2(LongImpl.ltu, lhs, rhs)
           case Long_unsigned_<= => expandLongOpSplit2(LongImpl.leu, lhs, rhs)

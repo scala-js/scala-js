@@ -720,6 +720,22 @@ private[emitter] object CoreJSLib {
       if (!useWasmSupport) {
         Nil
       } else {
+        // see also defineArithmeticOps()
+        val throwDivByZeroFun = genArrowFunction(Nil, {
+          if (globalKnowledge.isArithmeticExceptionClassInstantiatedWithStringArg) {
+            Throw(genScalaClassNew(ArithmeticExceptionClass,
+                StringArgConstructorName, str("/ by zero")))
+          } else {
+            // cannot reach ArithmeticException, but we need a function anyway
+            Skip()
+          }
+        })
+
+        val importsModuleContent = ObjectConstr(List(
+          str("throwDivByZero") -> throwDivByZeroFun
+        ))
+        val importsObj = ObjectConstr(List(str("") -> importsModuleContent))
+
         val wasmSupportDef = {
           val moduleBytes = WasmSupportLib.moduleBytes
           val moduleBytesArray = ArrayConstr(moduleBytes.map(IntLiteral(_)).toList)
@@ -727,7 +743,7 @@ private[emitter] object CoreJSLib {
 
           val instantiateCall = Apply(
             genIdentBracketSelect(globalRef("WebAssembly"), "instantiate"),
-            List(moduleBuffer)
+            List(moduleBuffer, importsObj)
           )
 
           val exportsExpr = genIdentBracketSelect(
@@ -745,12 +761,17 @@ private[emitter] object CoreJSLib {
         }
 
         wasmSupportDef :::
+        defFromExport(VarField.longResultHi, "longResultHi") :::
         defFromExport(VarField.floatFromBits, "floatFromBits") :::
         defFromExport(VarField.floatToBits, "floatToBits") :::
         defFromExport(VarField.doubleFromBits, "doubleFromBits") :::
         defFromExport(VarField.doubleToBitsLo, "doubleToBitsLo") :::
         defFromExport(VarField.doubleToBitsHi, "doubleToBitsHi") :::
-        defFromExport(VarField.longMulHi, "longMulHi")
+        defFromExport(VarField.longMulHi, "longMulHi") :::
+        defFromExport(VarField.longDivS, "longDivS") :::
+        defFromExport(VarField.longRemS, "longRemS") :::
+        defFromExport(VarField.longDivU, "longDivU") :::
+        defFromExport(VarField.longRemU, "longRemU")
       }
     }
 

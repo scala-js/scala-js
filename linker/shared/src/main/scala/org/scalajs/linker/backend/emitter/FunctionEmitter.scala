@@ -2557,11 +2557,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     def transformTypedArgs(methodName: MethodName, args: List[Tree])(
         implicit env: Env): List[js.Tree] = {
+      transformTypedArgsRefs(methodName.paramTypeRefs, args)
+    }
+
+    def transformTypedArgsRefs(paramTypeRefs: List[TypeRef], args: List[Tree])(
+        implicit env: Env): List[js.Tree] = {
       if (args.forall(a => a.tpe != CharType && !isSplitLongType(a.tpe))) {
         // Fast path
         args.map(transformExpr(_, preserveChar = true))
       } else {
-        args.zip(methodName.paramTypeRefs).flatMap {
+        args.zip(paramTypeRefs).flatMap {
           case (arg, CharRef) =>
             transformExpr(arg, preserveChar = true) :: Nil
           case (arg, LongRef) if !useBigIntForLongs =>
@@ -3459,24 +3464,26 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               js.Block(lo, hi)
           }
 
-        case Transient(WasmSupportOp(op, args)) =>
+        case Transient(t @ WasmSupportOp(op, args)) =>
           import WasmSupportOp._
 
           assert(useWasmSupport, "wasmSupport only")
-          val helper = op match {
-            case DoubleToBitsLo => VarField.doubleToBitsLo
-            case DoubleToBitsHi => VarField.doubleToBitsHi
-            case LongMulHi      => VarField.longMulHi
+
+          if (op == LongResultHi) {
+            genIdentBracketSelect(globalVar(VarField.longResultHi, CoreVar), "value")
+          } else {
+            val helper = op match {
+              case DoubleToBitsLo => VarField.doubleToBitsLo
+              case DoubleToBitsHi => VarField.doubleToBitsHi
+              case LongMulHi      => VarField.longMulHi
+              case LongDivS       => VarField.longDivS
+              case LongRemS       => VarField.longRemS
+              case LongDivU       => VarField.longDivU
+              case LongRemU       => VarField.longRemU
+            }
+            val newArgs = transformTypedArgsRefs(t.paramTypeRefs, args)
+            genCallHelper(helper, newArgs: _*)
           }
-          val newArgs = op match {
-            case LongMulHi =>
-              val (alo, ahi) = transformLongExpr(args(0))
-              val (blo, bhi) = transformLongExpr(args(1))
-              List(alo, ahi, blo, bhi)
-            case _ =>
-              args.map(transformExprNoChar(_))
-          }
-          genCallHelper(helper, newArgs: _*)
 
         case Transient(Cast(expr, tpe)) =>
           val newExpr = transformExpr(expr, preserveChar = true)
