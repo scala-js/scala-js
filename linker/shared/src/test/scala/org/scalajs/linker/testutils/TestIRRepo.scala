@@ -28,7 +28,7 @@ object TestIRRepo {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     Platform.loadJar(stdlibPath)
-      .flatMap(globalIRCache.newCache.cached _)
+      .flatMap(globalIRCache.newCache.cached(_))
   }
 
   /** For each previous lib, calls `f(version, irFiles)`, and combines the result.

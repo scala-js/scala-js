@@ -17,6 +17,8 @@ import scala.util.matching.Regex
 
 import org.scalajs.logging._
 
+import org.scalajs.linker.Nullables._
+
 import org.junit.Assert._
 
 final class CapturingLogger extends Logger {
@@ -81,7 +83,8 @@ object CapturingLogger {
 
     def assertContainsMatch(messageRegex: Regex): Seq[String] = {
       lines.collectFirst {
-        case LogLine(_, messageRegex(captures @ _*)) => captures
+        case LogLine(_, messageRegex(captures @ _*)) =>
+          captures.map(_.nn)
       }.getOrElse {
         throw new AssertionError(s"expected a log line matching '$messageRegex', but got \n${this}")
       }
