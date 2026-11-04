@@ -48,6 +48,9 @@ require some browser/Node.js/etc.-specific support?
 
 If no (i.e. it requires specific support), put it in a separate repo.
 
+Note that this also applies partial classes: if we add a partial class to the
+javalib that we can never complete without external support, then no one can write their own.
+
 Examples:
 - Removal of `javalib-ex` that depended on `jszip`.
 
