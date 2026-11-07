@@ -54,8 +54,6 @@ object VarGen {
 
     final case class forStaticField(fieldName: FieldName) extends GlobalID
 
-    final case class forStringLiteral(str: String) extends GlobalID
-
     case object lastIDHashCode extends GlobalID
 
     // No-JS Wasm only
