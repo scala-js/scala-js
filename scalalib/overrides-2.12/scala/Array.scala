@@ -53,31 +53,18 @@ class FallbackArrayBuilding {
  */
 object Array extends FallbackArrayBuilding {
 
-  def emptyBooleanArray = EmptyArrays.emptyBooleanArray
-  def emptyByteArray    = EmptyArrays.emptyByteArray
-  def emptyCharArray    = EmptyArrays.emptyCharArray
-  def emptyDoubleArray  = EmptyArrays.emptyDoubleArray
-  def emptyFloatArray   = EmptyArrays.emptyFloatArray
-  def emptyIntArray     = EmptyArrays.emptyIntArray
-  def emptyLongArray    = EmptyArrays.emptyLongArray
-  def emptyShortArray   = EmptyArrays.emptyShortArray
+  val emptyBooleanArray = new Array[Boolean](0)
+  val emptyByteArray    = new Array[Byte](0)
+  val emptyCharArray    = new Array[Char](0)
+  val emptyDoubleArray  = new Array[Double](0)
+  val emptyFloatArray   = new Array[Float](0)
+  val emptyIntArray     = new Array[Int](0)
+  val emptyLongArray    = new Array[Long](0)
+  val emptyShortArray   = new Array[Short](0)
 
   private[scala] //this is only private because of binary compatability
-  def emptyUnitArray    = EmptyArrays.emptyUnitArray
-  def emptyObjectArray  = EmptyArrays.emptyObjectArray
-
-  private object EmptyArrays {
-    val emptyBooleanArray = new Array[Boolean](0)
-    val emptyByteArray    = new Array[Byte](0)
-    val emptyCharArray    = new Array[Char](0)
-    val emptyDoubleArray  = new Array[Double](0)
-    val emptyFloatArray   = new Array[Float](0)
-    val emptyIntArray     = new Array[Int](0)
-    val emptyLongArray    = new Array[Long](0)
-    val emptyShortArray   = new Array[Short](0)
-    val emptyUnitArray    = new Array[Unit](0)
-    val emptyObjectArray  = new Array[Object](0)
-  }
+  val emptyUnitArray    = new Array[Unit](0)
+  val emptyObjectArray  = new Array[Object](0)
 
   implicit def canBuildFrom[T](implicit t: ClassTag[T]): CanBuildFrom[Array[_], T, Array[T]] = {
     @inline
