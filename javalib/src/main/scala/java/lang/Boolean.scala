@@ -88,4 +88,7 @@ object Boolean {
 
   @inline def compare(x: scala.Boolean, y: scala.Boolean): scala.Int =
     if (x == y) 0 else if (x) 1 else -1
+
+  @inline private[java] def toInt(b: scala.Boolean): scala.Int =
+    if (b) 1 else 0 // replaced by <boolToInt>(b) by the optimizer, so this is branchless
 }
