@@ -226,17 +226,11 @@ object Integer {
     parse(s, base)
   }
 
-  @inline def compare(x: scala.Int, y: scala.Int): scala.Int = {
-    if (x == y) 0
-    else if (x < y) -1
-    else 1
-  }
+  @inline def compare(x: scala.Int, y: scala.Int): scala.Int =
+    Boolean.toInt(x > y) - Boolean.toInt(x < y)
 
-  @inline def compareUnsigned(x: scala.Int, y: scala.Int): scala.Int = {
-    if (x == y) 0
-    else if (unsigned_<(x, y)) -1
-    else 1
-  }
+  @inline def compareUnsigned(x: scala.Int, y: scala.Int): scala.Int =
+    Boolean.toInt(unsigned_>(x, y)) - Boolean.toInt(unsigned_<(x, y))
 
   @inline private[java] def unsigned_<(x: scala.Int, y: scala.Int): scala.Boolean =
     (x ^ SignBit) < (y ^ SignBit)

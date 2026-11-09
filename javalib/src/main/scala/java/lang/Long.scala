@@ -464,18 +464,12 @@ object Long {
     value.toInt ^ (value >>> 32).toInt
 
   // RuntimeLong intrinsic
-  @inline def compare(x: scala.Long, y: scala.Long): scala.Int = {
-    if (x == y) 0
-    else if (x < y) -1
-    else 1
-  }
+  @inline def compare(x: scala.Long, y: scala.Long): scala.Int =
+    Boolean.toInt(x > y) - Boolean.toInt(x < y)
 
   // TODO RuntimeLong intrinsic?
-  @inline def compareUnsigned(x: scala.Long, y: scala.Long): scala.Int = {
-    if (x == y) 0
-    else if (unsigned_<(x, y)) -1
-    else 1
-  }
+  @inline def compareUnsigned(x: scala.Long, y: scala.Long): scala.Int =
+    Boolean.toInt(unsigned_>(x, y)) - Boolean.toInt(unsigned_<(x, y))
 
   @inline private[java] def unsigned_<(x: scala.Long, y: scala.Long): scala.Boolean =
     (x ^ SignBit) < (y ^ SignBit)

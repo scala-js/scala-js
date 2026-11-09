@@ -2201,7 +2201,7 @@ object Build {
           case `default213Version` =>
             if (!useMinifySizes) {
               Some(ExpectedSizes(
-                  fastLink = 432000 to 433000,
+                  fastLink = 433000 to 434000,
                   fullLink = 256000 to 257000,
                   fastLinkGz = 57000 to 58000,
                   fullLinkGz = 43000 to 44000,
