@@ -3251,16 +3251,6 @@ private[optimizer] abstract class OptimizerCore(
               isStat, usePreTransform)(
               cont1)
         }(cont)
-      case LongCompare =>
-        val List(tlhs, trhs) = targs
-        withSplitLong(tlhs) { (tlhsLo, tlhsHi, cont1) =>
-          withSplitLong(trhs) { (trhsLo, trhsHi, cont2) =>
-            pretransformApplyStatic(ApplyFlags.empty, LongImpl.RuntimeLongClass,
-                MethodIdent(LongImpl.compare), List(tlhsLo, tlhsHi, trhsLo, trhsHi), IntType,
-                isStat, usePreTransform)(
-                cont2)
-          }(cont1)
-        }(cont)
 
       // java.lang.Character
 
@@ -7511,9 +7501,8 @@ private[optimizer] object OptimizerCore {
     final val LongRotateLeft = LongBitCount + 1
     final val LongRotateRight = LongRotateLeft + 1
     final val LongToString = LongRotateRight + 1
-    final val LongCompare = LongToString + 1
 
-    final val CharacterCodePointToString = LongCompare + 1
+    final val CharacterCodePointToString = LongToString + 1
 
     final val StringCodePointAt = CharacterCodePointToString + 1
     final val StringSubstringStart = StringCodePointAt + 1
@@ -7640,8 +7629,7 @@ private[optimizer] object OptimizerCore {
 
     private val runtimeLongIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
       ClassName("java.lang.Long$") -> List(
-        m("toString", List(J), ClassRef(BoxedStringClass)) -> LongToString,
-        m("compare", List(J, J), I) -> LongCompare
+        m("toString", List(J), ClassRef(BoxedStringClass)) -> LongToString
       ),
       ClassName("java.lang.Math$") -> List(
         m("abs", List(J), J) -> MathAbsLong,

@@ -92,8 +92,6 @@ private[linker] object LongImpl {
 
   // Methods used for intrinsics
 
-  final val compare = MethodName("compare", FourIntRefs, IntRef)
-
   final val abs = MethodName("abs", TwoIntRefs, LongRef)
   final val multiplyFull = MethodName("multiplyFull", TwoIntRefs, LongRef)
 
@@ -133,7 +131,6 @@ private[linker] object LongImpl {
   }
 
   val AllIntrinsicMethods = Set(
-    compare,
     abs,
     multiplyFull,
     divModByConstantSmall,

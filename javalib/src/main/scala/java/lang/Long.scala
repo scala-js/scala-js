@@ -463,13 +463,31 @@ object Long {
   @inline def hashCode(value: scala.Long): Int =
     value.toInt ^ (value >>> 32).toInt
 
-  // RuntimeLong intrinsic
-  @inline def compare(x: scala.Long, y: scala.Long): scala.Int =
-    Boolean.toInt(x > y) - Boolean.toInt(x < y)
+  @inline def compare(x: scala.Long, y: scala.Long): scala.Int = {
+    if (LinkingInfo.isWebAssembly) {
+      Boolean.toInt(x > y) - Boolean.toInt(x < y)
+    } else {
+      val xhi = (x >>> 32).toInt
+      val yhi = (y >>> 32).toInt
+      if (xhi == yhi)
+        Integer.compareUnsigned(x.toInt, y.toInt)
+      else
+        Integer.compare(xhi, yhi)
+    }
+  }
 
-  // TODO RuntimeLong intrinsic?
-  @inline def compareUnsigned(x: scala.Long, y: scala.Long): scala.Int =
-    Boolean.toInt(unsigned_>(x, y)) - Boolean.toInt(unsigned_<(x, y))
+  @inline def compareUnsigned(x: scala.Long, y: scala.Long): scala.Int = {
+    if (LinkingInfo.isWebAssembly) {
+      Boolean.toInt(unsigned_>(x, y)) - Boolean.toInt(unsigned_<(x, y))
+    } else {
+      val xhi = (x >>> 32).toInt
+      val yhi = (y >>> 32).toInt
+      if (xhi == yhi)
+        Integer.compareUnsigned(x.toInt, y.toInt)
+      else
+        Integer.compareUnsigned(xhi, yhi)
+    }
+  }
 
   @inline private[java] def unsigned_<(x: scala.Long, y: scala.Long): scala.Boolean =
     (x ^ SignBit) < (y ^ SignBit)
