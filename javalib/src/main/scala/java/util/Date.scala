@@ -14,7 +14,7 @@ package java.util
 
 import scala.annotation.switch
 
-import java.lang.Cloneable
+import java.lang.{Boolean => JBoolean, Cloneable}
 import java.time.Instant
 
 /* Note that the default timezone is always Etc/GMT (= UTC, without any
@@ -166,7 +166,7 @@ class Date(private var time: Long)
     val (yearInCycle, dayInYear, isLeapYear) = {
       val estimatedYearInCycle = Integer.divideUnsigned(daysIn400YearCycle, 366)
       val estimatedDayInYear = daysIn400YearCycle - daysToYearInGregorianCycle(estimatedYearInCycle)
-      val estimatedIsLeap = if (isGregorianLeapYearInCycle(estimatedYearInCycle)) 1 else 0
+      val estimatedIsLeap = JBoolean.toInt(isGregorianLeapYearInCycle(estimatedYearInCycle))
       val estimatedNumDays = 365 + estimatedIsLeap
       if (estimatedDayInYear < estimatedNumDays) {
         // The estimated day falls into the estimated year, so the estimation is correct
@@ -175,7 +175,7 @@ class Date(private var time: Long)
         // Adjust the estimation
         val correctedYear = estimatedYearInCycle + 1
         val correctedDayInYear = estimatedDayInYear - estimatedNumDays
-        val correctedYearIsLeap = if (isGregorianLeapYearInCycle(correctedYear)) 1 else 0
+        val correctedYearIsLeap = JBoolean.toInt(isGregorianLeapYearInCycle(correctedYear))
         (correctedYear, correctedDayInYear, correctedYearIsLeap)
       }
     }
@@ -581,7 +581,7 @@ object Date {
     val daysInYearToMonth1st = actualMonth match {
       case 0 => 0
       case 1 => 31
-      case _ => CumulativeDaysInMonthsNonLeap(actualMonth - 1) + (if (isLeapYear) 1 else 0)
+      case _ => CumulativeDaysInMonthsNonLeap(actualMonth - 1) + JBoolean.toInt(isLeapYear)
     }
 
     // Add up all the days since the epoch

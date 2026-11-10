@@ -471,18 +471,6 @@ object RuntimeLong {
     )
   }
 
-  @inline
-  def compare(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    if (ahi == bhi) {
-      if (alo == blo) 0
-      else if (inlineUnsignedInt_<(alo, blo)) -1
-      else 1
-    } else {
-      if (ahi < bhi) -1
-      else 1
-    }
-  }
-
   /** Intrinsic for Math.multiplyFull.
    *
    *  Compared to the regular expansion of `x.toLong * y.toLong`, this

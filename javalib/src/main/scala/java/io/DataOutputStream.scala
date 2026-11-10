@@ -32,7 +32,7 @@ class DataOutputStream(out: OutputStream) extends FilterOutputStream(out) with D
     super.flush()
 
   final def writeBoolean(v: Boolean): Unit =
-    write(if (v) 1 else 0)
+    write(java.lang.Boolean.toInt(v))
 
   final def writeByte(v: Int): Unit =
     write(v)
