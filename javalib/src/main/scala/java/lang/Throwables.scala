@@ -17,15 +17,23 @@ import java.util.Objects.requireNonNull
 
 import scala.scalajs.js.annotation.JSExport
 
-class Throwable protected (s: String, private var e: Throwable,
+class Throwable private[lang] (s: String,
     enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
     extends Object with java.io.Serializable {
 
-  def this(message: String, cause: Throwable) = this(message, cause, true, true)
-  def this() = this(null, null)
-  def this(s: String) = this(s, null)
-  def this(e: Throwable) = this(if (e == null) null else e.toString, e)
+  protected def this(message: String, cause: Throwable,
+      enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean) = {
+    this(message, enableSuppression, writableStackTrace)
+    initCauseUnchecked(cause)
+  }
 
+  def this() = this(null: String, true, true)
+  def this(message: String) = this(message, true, true)
+  def this(message: String, cause: Throwable) = this(message, cause, true, true)
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
+
+  private[this] var initCauseDone: scala.Boolean = _
+  private[this] var e: Throwable = _
   private[this] var jsErrorForStackTrace: Any = _
   private[this] var stackTrace: Array[StackTraceElement] = _
 
@@ -38,8 +46,17 @@ class Throwable protected (s: String, private var e: Throwable,
     fillInStackTrace()
 
   def initCause(cause: Throwable): Throwable = {
-    e = cause
+    if (initCauseDone)
+      throw new IllegalStateException("Can't overwrite cause with " + cause)
+    if (cause eq this)
+      throw new IllegalArgumentException("Self-causation not permitted")
+    initCauseUnchecked(cause)
     this
+  }
+
+  @inline private[java] def initCauseUnchecked(cause: Throwable): Unit = {
+    initCauseDone = true
+    this.e = cause
   }
 
   def getMessage(): String = s
@@ -205,32 +222,39 @@ class AbstractMethodError(s: String) extends IncompatibleClassChangeError(s) {
   def this() = this(null)
 }
 
-class AssertionError(message: String, cause: Throwable) extends Error(message, cause) {
-
-  def this() = this(null, null)
+class AssertionError private (message: String) extends Error(message) {
+  def this() = this(null: String)
 
   def this(detailMessage: Object) = {
-    this(
-      String.valueOf(detailMessage),
-      detailMessage match {
-        case cause: Throwable => cause
-        case _                => null
-      }
-    )
+    this(String.valueOf(detailMessage))
+    detailMessage match {
+      case cause: Throwable => initCauseUnchecked(cause)
+      case _                => ()
+    }
   }
 
-  def this(detailMessage: scala.Boolean) = this(String.valueOf(detailMessage), null)
-  def this(detailMessage: scala.Char) = this(String.valueOf(detailMessage), null)
-  def this(detailMessage: scala.Int) = this(String.valueOf(detailMessage), null)
-  def this(detailMessage: scala.Long) = this(String.valueOf(detailMessage), null)
-  def this(detailMessage: scala.Float) = this(String.valueOf(detailMessage), null)
-  def this(detailMessage: scala.Double) = this(String.valueOf(detailMessage), null)
+  def this(detailMessage: scala.Boolean) = this(String.valueOf(detailMessage))
+  def this(detailMessage: scala.Char) = this(String.valueOf(detailMessage))
+  def this(detailMessage: scala.Int) = this(String.valueOf(detailMessage))
+  def this(detailMessage: scala.Long) = this(String.valueOf(detailMessage))
+  def this(detailMessage: scala.Float) = this(String.valueOf(detailMessage))
+  def this(detailMessage: scala.Double) = this(String.valueOf(detailMessage))
+
+  def this(message: String, cause: Throwable) = {
+    this(message)
+    initCauseUnchecked(cause)
+  }
 }
 
-class BootstrapMethodError(s: String, e: Throwable) extends LinkageError(s) {
-  def this(e: Throwable) = this(if (e == null) null else e.toString, e)
-  def this(s: String) = this(s, null)
-  def this() = this(null, null)
+class BootstrapMethodError(message: String) extends LinkageError(message) {
+  def this() = this(null: String)
+
+  def this(message: String, cause: Throwable) = {
+    this(message)
+    initCauseUnchecked(cause)
+  }
+
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }
 
 class ClassCircularityError(s: String) extends LinkageError(s) {
@@ -241,22 +265,31 @@ class ClassFormatError(s: String) extends LinkageError(s) {
   def this() = this(null)
 }
 
-class Error protected (s: String, e: Throwable,
+class Error private[lang] (message: String,
     enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
-    extends Throwable(s, e, enableSuppression, writableStackTrace) {
+    extends Throwable(message, enableSuppression, writableStackTrace) {
+
+  protected def this(message: String, cause: Throwable,
+      enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean) = {
+    this(message, enableSuppression, writableStackTrace)
+    initCauseUnchecked(cause)
+  }
+
+  def this() = this(null: String, true, true)
+  def this(s: String) = this(s, true, true)
   def this(message: String, cause: Throwable) = this(message, cause, true, true)
-  def this() = this(null, null)
-  def this(s: String) = this(s, null)
-  def this(e: Throwable) = this(if (e == null) null else e.toString, e)
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }
 
-class ExceptionInInitializerError private (s: String, private val e: Throwable)
-    extends LinkageError(s) {
-  def this(thrown: Throwable) = this(null, thrown)
-  def this(s: String) = this(s, null)
-  def this() = this(null, null)
-  def getException(): Throwable = e
-  override def getCause(): Throwable = e
+class ExceptionInInitializerError(s: String) extends LinkageError(s) {
+  def this() = this(null: String)
+
+  def this(thrown: Throwable) = {
+    this(if (thrown == null) null else thrown.toString())
+    initCauseUnchecked(thrown)
+  }
+
+  def getException(): Throwable = getCause()
 }
 
 class IllegalAccessError(s: String) extends IncompatibleClassChangeError(s) {
@@ -276,7 +309,12 @@ class InternalError(s: String) extends VirtualMachineError(s) {
 }
 
 class LinkageError(s: String) extends Error(s) {
-  def this() = this(null)
+  def this() = this(null: String)
+
+  def this(s: String, cause: Throwable) = {
+    this(s)
+    initCauseUnchecked(cause)
+  }
 }
 
 class NoClassDefFoundError(s: String) extends LinkageError(s) {
@@ -315,15 +353,15 @@ class VerifyError(s: String) extends LinkageError(s) {
   def this() = this(null)
 }
 
-abstract class VirtualMachineError(message: String, cause: Throwable)
-    extends Error(message, cause) {
+abstract class VirtualMachineError(message: String) extends Error(message) {
+  def this() = this(null: String)
 
-  def this() = this(null, null)
+  def this(message: String, cause: Throwable) = {
+    this(message)
+    initCauseUnchecked(cause)
+  }
 
-  def this(message: String) = this(message, null)
-
-  def this(cause: Throwable) =
-    this(if (cause == null) null else cause.toString, cause)
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }
 
 /* java.lang.*Exception.java */
@@ -345,11 +383,15 @@ class ClassCastException(s: String) extends RuntimeException(s) {
   def this() = this(null)
 }
 
-class ClassNotFoundException(s: String, e: Throwable) extends ReflectiveOperationException(s) {
-  def this(s: String) = this(s, null)
-  def this() = this(null, null)
-  def getException(): Throwable = e
-  override def getCause(): Throwable = e
+class ClassNotFoundException(s: String) extends ReflectiveOperationException(s) {
+  def this() = this(null: String)
+
+  def this(s: String, ex: Throwable) = {
+    this(s)
+    initCauseUnchecked(ex)
+  }
+
+  def getException(): Throwable = getCause()
 }
 
 class CloneNotSupportedException(s: String) extends Exception(s) {
@@ -362,33 +404,50 @@ class EnumConstantNotPresentException(e: Class[_ <: Enum[_]], c: String)
   def constantName(): String = c
 }
 
-class Exception protected (s: String, e: Throwable,
+class Exception private[lang] (message: String,
     enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
-    extends Throwable(s, e, enableSuppression, writableStackTrace) {
+    extends Throwable(message, enableSuppression, writableStackTrace) {
+
+  protected def this(message: String, cause: Throwable,
+      enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean) = {
+    this(message, enableSuppression, writableStackTrace)
+    initCauseUnchecked(cause)
+  }
+
+  def this() = this(null: String, true, true)
+  def this(s: String) = this(s, true, true)
   def this(message: String, cause: Throwable) = this(message, cause, true, true)
-  def this(e: Throwable) = this(if (e == null) null else e.toString, e)
-  def this(s: String) = this(s, null)
-  def this() = this(null, null)
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }
 
 class IllegalAccessException(s: String) extends ReflectiveOperationException(s) {
   def this() = this(null)
 }
 
-class IllegalArgumentException(s: String, e: Throwable) extends RuntimeException(s, e) {
-  def this(e: Throwable) = this(if (e == null) null else e.toString, e)
-  def this(s: String) = this(s, null)
-  def this() = this(null, null)
+class IllegalArgumentException(s: String) extends RuntimeException(s) {
+  def this() = this(null: String)
+
+  def this(message: String, cause: Throwable) = {
+    this(message)
+    initCauseUnchecked(cause)
+  }
+
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }
 
 class IllegalMonitorStateException(s: String) extends RuntimeException(s) {
   def this() = this(null)
 }
 
-class IllegalStateException(s: String, e: Throwable) extends RuntimeException(s, e) {
-  def this(e: Throwable) = this(if (e == null) null else e.toString, e)
-  def this(s: String) = this(s, null)
-  def this() = this(null, null)
+class IllegalStateException(s: String) extends RuntimeException(s) {
+  def this() = this(null: String)
+
+  def this(message: String, cause: Throwable) = {
+    this(message)
+    initCauseUnchecked(cause)
+  }
+
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }
 
 class IllegalThreadStateException(s: String) extends IllegalArgumentException(s) {
@@ -429,31 +488,42 @@ class NumberFormatException(s: String) extends IllegalArgumentException(s) {
   def this() = this(null)
 }
 
-class ReflectiveOperationException(s: String, e: Throwable) extends Exception(s, e) {
-  def this(e: Throwable) = this(if (e == null) null else e.toString, e)
-  def this(s: String) = this(s, null)
-  def this() = this(null, null)
+class ReflectiveOperationException(message: String) extends Exception(message) {
+  def this() = this(null: String)
+
+  def this(message: String, cause: Throwable) = {
+    this(message)
+    initCauseUnchecked(cause)
+  }
+
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }
 
-class RejectedExecutionException(s: String, e: Throwable) extends RuntimeException(s, e) {
-  def this(e: Throwable) = this(if (e == null) null else e.toString, e)
-  def this(s: String) = this(s, null)
-  def this() = this(null, null)
-}
-
-class RuntimeException protected (s: String, e: Throwable,
+class RuntimeException private[lang] (message: String,
     enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
-    extends Exception(s, e, enableSuppression, writableStackTrace) {
+    extends Exception(message, enableSuppression, writableStackTrace) {
+
+  protected def this(message: String, cause: Throwable,
+      enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean) = {
+    this(message, enableSuppression, writableStackTrace)
+    initCauseUnchecked(cause)
+  }
+
+  def this() = this(null: String, true, true)
+  def this(s: String) = this(s, true, true)
   def this(message: String, cause: Throwable) = this(message, cause, true, true)
-  def this(e: Throwable) = this(if (e == null) null else e.toString, e)
-  def this(s: String) = this(s, null)
-  def this() = this(null, null)
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }
 
-class SecurityException(s: String, e: Throwable) extends RuntimeException(s, e) {
-  def this(e: Throwable) = this(if (e == null) null else e.toString, e)
-  def this(s: String) = this(s, null)
-  def this() = this(null, null)
+class SecurityException(s: String) extends RuntimeException(s) {
+  def this() = this(null: String)
+
+  def this(message: String, cause: Throwable) = {
+    this(message)
+    initCauseUnchecked(cause)
+  }
+
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }
 
 class StringIndexOutOfBoundsException(s: String) extends IndexOutOfBoundsException(s) {
@@ -466,8 +536,13 @@ class TypeNotPresentException(t: String, e: Throwable)
   def typeName(): String = t
 }
 
-class UnsupportedOperationException(s: String, e: Throwable) extends RuntimeException(s, e) {
-  def this() = this(null, null)
-  def this(s: String) = this(s, null)
-  def this(e: Throwable) = this(if (e == null) null else e.toString, e)
+class UnsupportedOperationException(message: String) extends RuntimeException(message) {
+  def this() = this(null: String)
+
+  def this(message: String, cause: Throwable) = {
+    this(message)
+    initCauseUnchecked(cause)
+  }
+
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }

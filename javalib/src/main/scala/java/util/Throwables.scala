@@ -14,8 +14,11 @@ package java.util
 
 import java.util.Objects.requireNonNull
 
-class ServiceConfigurationError(s: String, e: Throwable) extends Error(s, e) {
-  def this(s: String) = this(s, null)
+class ServiceConfigurationError(msg: String) extends Error(msg) {
+  def this(msg: String, cause: Throwable) = {
+    this(msg)
+    initCauseUnchecked(cause)
+  }
 }
 
 class ConcurrentModificationException(s: String) extends RuntimeException(s) {
@@ -91,10 +94,10 @@ class InputMismatchException(s: String) extends NoSuchElementException(s) {
   def this() = this(null)
 }
 
-class InvalidPropertiesFormatException(s: String) extends java.io.IOException(s) {
-  def this(e: Throwable) = {
-    this(if (e == null) null.asInstanceOf[String] else e.toString())
-    this.initCause(e)
+class InvalidPropertiesFormatException(message: String) extends java.io.IOException(message) {
+  def this(cause: Throwable) = {
+    this(if (cause == null) null else cause.toString())
+    initCauseUnchecked(cause)
   }
   // private def writeObject(out: java.io.ObjectOutputStream) =
   //   throw new java.io.NotSerializableException("Not serializable.")

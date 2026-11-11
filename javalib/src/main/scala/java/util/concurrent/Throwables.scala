@@ -12,12 +12,15 @@
 
 package java.util.concurrent
 
-class ExecutionException(message: String, cause: Throwable) extends Exception(message, cause) {
+class ExecutionException protected (message: String) extends Exception(message) {
+  def this() = this(null: String)
 
-  protected def this() = this(null, null)
-  protected def this(message: String) = this(message, null)
-  def this(cause: Throwable) =
-    this(if (cause == null) null else cause.toString, cause)
+  protected def this(message: String, cause: Throwable) = {
+    this(message)
+    initCauseUnchecked(cause)
+  }
+
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }
 
 class CancellationException(message: String) extends IllegalStateException(message) {
@@ -29,13 +32,13 @@ class TimeoutException(message: String) extends Exception(message) {
   def this() = this(null)
 }
 
-class RejectedExecutionException(message: String, cause: Throwable)
-    extends RuntimeException(message, cause) {
+class RejectedExecutionException(message: String) extends RuntimeException(message) {
+  def this() = this(null: String)
 
-  def this() = this(null, null)
+  def this(message: String, cause: Throwable) = {
+    this(message)
+    initCauseUnchecked(cause)
+  }
 
-  def this(message: String) = this(message, null)
-
-  def this(cause: Throwable) =
-    this(if (cause eq null) null else cause.toString, cause)
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }

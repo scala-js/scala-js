@@ -15,6 +15,8 @@ package org.scalajs.testsuite.javalib.lang
 import org.junit.Test
 import org.junit.Assert._
 
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+
 class ThrowablesTest {
 
   @Test def allJavaLangErrorsAndExceptions(): Unit = {
@@ -237,6 +239,7 @@ class ThrowablesTest {
     assertMessageNoCause(null, new AssertionError())
 
     assertMessageNoCause("boom", new AssertionError("boom"))
+    assertMessageNoCause("null", new AssertionError(null: String))
     assertMessageNoCause("Some(5)", new AssertionError(Some(5)))
     assertMessageNoCause("null", new AssertionError(null: Object))
 
@@ -257,6 +260,10 @@ class ThrowablesTest {
     val e2 = new AssertionError("boom", th2)
     assertEquals("boom", e2.getMessage)
     assertSame(th2, e2.getCause)
+
+    val e3 = new AssertionError(null, th2)
+    assertNull(null, e3.getMessage())
+    assertSame(th2, e3.getCause())
   }
 
   @Test def ioobeConstructorsWithIndex(): Unit = {
@@ -265,5 +272,96 @@ class ThrowablesTest {
 
     val e2 = new IndexOutOfBoundsException(1234L)
     assertTrue(e2.getMessage(), e2.getMessage().contains("1234"))
+  }
+
+  @Test def initCause(): Unit = {
+    val theCause = new IllegalArgumentException("the cause")
+    val anotherCause = new IllegalArgumentException("another cause")
+
+    def testInitializedState(th: Throwable, expectedCause: Throwable): Unit = {
+      assertSame(expectedCause, th.getCause())
+      assertThrows(classOf[IllegalStateException], th.initCause(null))
+      assertThrows(classOf[IllegalStateException], th.initCause(expectedCause))
+      assertThrows(classOf[IllegalStateException], th.initCause(anotherCause))
+      assertThrows(classOf[IllegalStateException], th.initCause(th))
+      assertSame(expectedCause, th.getCause())
+    }
+
+    def testUninitializedState(th: Throwable, causeToSet: Throwable): Unit = {
+      assertNull(th.getCause())
+      assertThrows(classOf[IllegalArgumentException], th.initCause(th))
+      assertSame(th, th.initCause(causeToSet))
+      testInitializedState(th, causeToSet)
+    }
+
+    // Classes that offer access to the protected constructors with boolean arguments
+
+    class ImmutableThrowable(msg: String, cause: Throwable)
+        extends Throwable(msg, cause, false, false)
+
+    class ImmutableError(msg: String, cause: Throwable) extends Error(msg, cause, false, false)
+
+    class ImmutableException(msg: String, cause: Throwable)
+        extends Exception(msg, cause, false, false)
+
+    class ImmutableRuntimeException(msg: String, cause: Throwable)
+        extends RuntimeException(msg, cause, false, false)
+
+    // The tests
+
+    for (cause <- List(theCause, null)) {
+      // Test the classes that offer the protected constructors with boolean arguments
+
+      testUninitializedState(new Throwable(), cause)
+      testUninitializedState(new Throwable("foo"), cause)
+      testInitializedState(new Throwable(cause), cause)
+      testInitializedState(new Throwable("foo", cause), cause)
+      testInitializedState(new ImmutableThrowable("foo", cause), cause)
+
+      testUninitializedState(new Error(), cause)
+      testUninitializedState(new Error("foo"), cause)
+      testInitializedState(new Error(cause), cause)
+      testInitializedState(new Error("foo", cause), cause)
+      testInitializedState(new ImmutableError("foo", cause), cause)
+
+      testUninitializedState(new Exception(), cause)
+      testUninitializedState(new Exception("foo"), cause)
+      testInitializedState(new Exception(cause), cause)
+      testInitializedState(new Exception("foo", cause), cause)
+      testInitializedState(new ImmutableException("foo", cause), cause)
+
+      testUninitializedState(new RuntimeException(), cause)
+      testUninitializedState(new RuntimeException("foo"), cause)
+      testInitializedState(new RuntimeException(cause), cause)
+      testInitializedState(new RuntimeException("foo", cause), cause)
+      testInitializedState(new ImmutableRuntimeException("foo", cause), cause)
+
+      // Some normal exception classes
+
+      testUninitializedState(new UnsupportedOperationException(), cause)
+      testUninitializedState(new UnsupportedOperationException("foo"), cause)
+      testInitializedState(new UnsupportedOperationException(cause), cause)
+      testInitializedState(new UnsupportedOperationException("foo", cause), cause)
+
+      testUninitializedState(new java.io.IOException(), cause)
+      testUninitializedState(new java.io.IOException("foo"), cause)
+      testInitializedState(new java.io.IOException(cause), cause)
+      testInitializedState(new java.io.IOException("foo", cause), cause)
+
+      // AssertionError is particularly weird because of its (Object) constructor
+      testUninitializedState(new AssertionError(), cause)
+      testUninitializedState(new AssertionError("foo"), cause)
+      testUninitializedState(new AssertionError(null: Throwable), cause)
+      testUninitializedState(new AssertionError(List(1)), cause)
+      testUninitializedState(new AssertionError(true), cause)
+      testUninitializedState(new AssertionError('A'), cause)
+      testUninitializedState(new AssertionError(1), cause)
+      testUninitializedState(new AssertionError(1L), cause)
+      testUninitializedState(new AssertionError(1.5f), cause)
+      testUninitializedState(new AssertionError(1.4), cause)
+      if (cause != null)
+        testInitializedState(new AssertionError(cause), cause)
+      testInitializedState(new AssertionError("foo", cause), cause)
+    }
   }
 }
