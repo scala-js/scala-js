@@ -17,7 +17,7 @@ import java.util.Objects.requireNonNull
 
 import scala.scalajs.js.annotation.JSExport
 
-class Throwable private[lang] (s: String,
+class Throwable private[lang] (message: String,
     enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
     extends Object with java.io.Serializable {
 
@@ -33,7 +33,7 @@ class Throwable private[lang] (s: String,
   def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 
   private[this] var initCauseDone: scala.Boolean = _
-  private[this] var e: Throwable = _
+  private[this] var cause: Throwable = _
   private[this] var jsErrorForStackTrace: Any = _
   private[this] var stackTrace: Array[StackTraceElement] = _
 
@@ -56,11 +56,11 @@ class Throwable private[lang] (s: String,
 
   @inline private[java] def initCauseUnchecked(cause: Throwable): Unit = {
     initCauseDone = true
-    this.e = cause
+    this.cause = cause
   }
 
-  def getMessage(): String = s
-  def getCause(): Throwable = e
+  def getMessage(): String = message
+  def getCause(): Throwable = cause
   def getLocalizedMessage(): String = getMessage()
 
   def fillInStackTrace(): Throwable = {
