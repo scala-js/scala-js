@@ -12,10 +12,15 @@
 
 package java.io
 
-class IOException(s: String, e: Throwable) extends Exception(s, e) {
-  def this(e: Throwable) = this(if (e == null) null else e.toString, e)
-  def this(s: String) = this(s, null)
-  def this() = this(null, null)
+class IOException(message: String) extends Exception(message) {
+  def this() = this(null: String)
+
+  def this(message: String, cause: Throwable) = {
+    this(message)
+    initCauseUnchecked(cause)
+  }
+
+  def this(cause: Throwable) = this(if (cause == null) null else cause.toString(), cause)
 }
 
 class EOFException(s: String) extends IOException(s) {
