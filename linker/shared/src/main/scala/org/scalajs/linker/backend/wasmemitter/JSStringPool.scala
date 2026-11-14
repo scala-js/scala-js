@@ -16,14 +16,15 @@ import scala.collection.mutable
 
 import org.scalajs.ir.OriginalName
 
+import org.scalajs.linker.backend.webassembly.Identitities._
 import org.scalajs.linker.backend.webassembly.Instructions._
 import org.scalajs.linker.backend.webassembly.Modules._
 import org.scalajs.linker.backend.webassembly.Types._
 
 import EmbeddedConstants._
-import VarGen._
 
 private[wasmemitter] final class JSStringPool extends StringPool {
+  import JSStringPool.StringLiteralID
 
   private val registeredStrings = new mutable.HashSet[String]
 
@@ -38,11 +39,11 @@ private[wasmemitter] final class JSStringPool extends StringPool {
       throw new IllegalStateException("The string pool was already generated")
 
     registeredStrings += str
-    List(GlobalGet(genGlobalID.forStringLiteral(str)))
+    List(GlobalGet(StringLiteralID(str)))
   }
 
   def getEmptyStringInstr(): GlobalGet =
-    GlobalGet(genGlobalID.forStringLiteral(""))
+    GlobalGet(StringLiteralID(""))
 
   /** Generates the string pool, and returns the list of WTF-16 strings that
    *  must be provided by the JS embedding.
@@ -59,7 +60,7 @@ private[wasmemitter] final class JSStringPool extends StringPool {
           Import(
             UTF8StringConstantsModule,
             str, // by definition, the imported member name is the string itself
-            ImportDesc.Global(genGlobalID.forStringLiteral(str),
+            ImportDesc.Global(StringLiteralID(str),
                 OriginalName("'" + str), isMutable = false, RefType.extern)
           )
         )
@@ -71,7 +72,7 @@ private[wasmemitter] final class JSStringPool extends StringPool {
           Import(
             WTF16StringConstantsModule,
             indexStr,
-            ImportDesc.Global(genGlobalID.forStringLiteral(str),
+            ImportDesc.Global(StringLiteralID(str),
                 OriginalName("wtf16." + indexStr), isMutable = false, RefType.extern)
           )
         )
@@ -95,4 +96,8 @@ private[wasmemitter] final class JSStringPool extends StringPool {
     true
     // scalastyle:on return
   }
+}
+
+private[wasmemitter] object JSStringPool {
+  private case class StringLiteralID(str: String) extends GlobalID
 }
