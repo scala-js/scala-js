@@ -34,16 +34,19 @@ private[wasmemitter] final class JSStringPool extends StringPool {
   def getConstantStringDataForTypeData(str: String): List[Instr] =
     getConstantStringInstr(str)
 
-  def getConstantStringInstr(str: String): List[Instr] = {
+  def getConstantStringInstr(str: String): List[Instr] =
+    List(getConstantStringSingleInstr(str))
+
+  private def getConstantStringSingleInstr(str: String): GlobalGet = {
     if (poolWasGenerated)
       throw new IllegalStateException("The string pool was already generated")
 
     registeredStrings += str
-    List(GlobalGet(StringLiteralID(str)))
+    GlobalGet(StringLiteralID(str))
   }
 
   def getEmptyStringInstr(): GlobalGet =
-    GlobalGet(StringLiteralID(""))
+    getConstantStringSingleInstr("")
 
   /** Generates the string pool, and returns the list of WTF-16 strings that
    *  must be provided by the JS embedding.
