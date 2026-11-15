@@ -57,6 +57,20 @@ object ModuleKind {
    *
    *  Since the Wasm module uses GC types, it cannot be used in multi-threaded
    *  setups. This is likely to be enforced by the engines, for safety reasons.
+   *
+   *  <h2>Experimental support for testing</h2>
+   *
+   *  Through scalajs-js-envs v1.7.0, Scala.js provides experimental support
+   *  for testing `WasmModule`s using the regular testing infrastructure of
+   *  build tools. No special setup is required.
+   *
+   *  However, the contract between the produced `.wasm` file and the `JSEnv`
+   *  API is not yet set in stone. It is possible that a future version of
+   *  scalajs-js-envs will break the contract, requiring a matching update of
+   *  Scala.js core (to be precise, its scalajs-test-bridge artifact).
+   *
+   *  Unless you manually depend on newer versions of scalajs-js-envs, updates
+   *  should be transparent.
    */
   case object WasmModule extends ModuleKind
 
