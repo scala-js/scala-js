@@ -1001,7 +1001,7 @@ object Build {
         "2.13.17",
         "2.13.18",
       ),
-      cross3ScalaVersions := Seq("3.8.3"),
+      cross3ScalaVersions := Seq("3.9.0"),
 
       default212ScalaVersion := cross212ScalaVersions.value.last,
       default213ScalaVersion := cross213ScalaVersions.value.last,
@@ -1292,8 +1292,11 @@ object Build {
           previousVersions.map { version =>
             // Prior to Scala.js 1.11.0, the javalib IR files were in scalajs-library
             val artifactName = CrossVersion.partialVersion(version) match {
-              case Some((1L, minor)) if minor < 11 => s"scalajs-library_$binVer"
-              case _                               => "scalajs-javalib"
+              case Some((1L, minor)) if minor < 11 =>
+                if (binVer == "3") "scalajs-library_2.13"
+                else s"scalajs-library_$binVer"
+              case _ =>
+                "scalajs-javalib"
             }
 
             val jars = lm.retrieve("org.scala-js" % artifactName % version intransitive(),
@@ -1443,14 +1446,14 @@ object Build {
       pluginCrossBuild / sbtVersion := {
         scalaBinaryVersion.value match {
           case "2.12" => "1.9.0"
-          case _      => "2.0.0"
+          case _      => "2.1.0"
         }
       },
 
       scriptedSbt := {
         scalaBinaryVersion.value match {
           case "2.12" => "1.9.0"
-          case _      => "2.0.0"
+          case _      => "2.1.0"
         }
       },
 
