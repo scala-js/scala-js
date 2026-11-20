@@ -651,6 +651,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 val genArray = transformExprNoChar(newArray)
                 val genIndex = transformExprNoChar(newIndex)
 
+                val isRefArray = RefArray.is(array.tpe)
+
                 /* We need to use a checked 'set' if at least one of the following applies:
                  * - Array index out of bounds are checked, or
                  * - Array stores are checked and the array is an array of reference types.
@@ -662,7 +664,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                  */
                 val checked = {
                   (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked) ||
-                  ((semantics.arrayStores != CheckedBehavior.Unchecked) && RefArray.is(array.tpe))
+                  ((semantics.arrayStores != CheckedBehavior.Unchecked) && isRefArray)
                 }
 
                 if (isSplitLongType(lhs.tpe)) {
@@ -697,7 +699,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                     }
                   }
                 } else {
-                  val genRhs = transformExpr(newRhs, lhs.tpe)
+                  /* Because of unsound assignments to reference arrays, the expected
+                   * rhs type for all reference arrays is theoretically `any`.
+                   * It does not make any difference in practice compared to using
+                   * `lhs.tpe` for the JS backend, but it is consistent with the Wasm
+                   * backend, and cleaner anyway.
+                   */
+                  val expectedRhsType =
+                    if (!isRefArray) lhs.tpe
+                    else AnyType
+                  val genRhs = transformExpr(newRhs, expectedRhsType)
 
                   if (checked) {
                     genSyntheticPropApply(genArray, SyntheticProperty.set, genIndex, genRhs)
