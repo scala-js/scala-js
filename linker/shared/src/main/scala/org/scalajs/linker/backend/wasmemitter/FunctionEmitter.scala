@@ -804,13 +804,10 @@ private class FunctionEmitter private (
             genCheckNonNullFor(array)
 
             def genRhs(): Unit = {
-              genTree(rhs, lhs.tpe)
-              lhs.tpe match {
-                case ClassType(BoxedStringClass, _, _) if ctx.hasJSInterop =>
-                  fb += wa.AnyConvertExtern
-                case _ =>
-                  ()
-              }
+              val expectedRhsType =
+                if (isPrimArray) lhs.tpe
+                else AnyType // required for unsound assignments, see notably #5471
+              genTree(rhs, expectedRhsType)
             }
 
             /* We could avoid the arrayStore checks if the array type is exact

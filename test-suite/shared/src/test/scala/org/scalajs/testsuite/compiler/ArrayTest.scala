@@ -21,6 +21,7 @@ import org.scalajs.testsuite.utils.Platform._
 
 class ArrayTest {
 
+  @inline
   private def covariantUpcast[A <: AnyRef](array: Array[_ <: A]): Array[A] =
     array.asInstanceOf[Array[A]]
 
@@ -37,6 +38,9 @@ class ArrayTest {
   @inline
   private def throwIllegalStateAsIntInline(): Int =
     throw new IllegalStateException()
+
+  @noinline
+  private def hide[A](x: A): A = x
 
   @Test
   def getArrayIndexOutOfBounds(): Unit = {
@@ -124,9 +128,11 @@ class ArrayTest {
   }
 
   @Test
-  def setArrayStoreExceptions(): Unit = {
-    assumeTrue("Assuming compliant ArrayStores",
-        hasCompliantArrayStores)
+  def unsoundArraySets(): Unit = {
+    def assertThrowsASEIfCompliant(code: => Unit): Unit = {
+      if (hasCompliantArrayStores)
+        assertThrows(classOf[ArrayStoreException], code)
+    }
 
     val obj = new AnyRef
     val str = "foo"
@@ -136,9 +142,9 @@ class ArrayTest {
     val a: Array[AnyRef] = covariantUpcast(new Array[Seq[_]](5))
     a(1) = list
     assertSame(list, a(1))
-    assertThrows(classOf[ArrayStoreException], a(1) = obj)
+    assertThrowsASEIfCompliant(a(1) = obj)
     assertSame(list, a(1))
-    assertThrows(classOf[ArrayStoreException], a(2) = str)
+    assertThrowsASEIfCompliant(a(2) = str)
     assertNull(a(2))
     a(3) = vector
     assertSame(vector, a(3))
@@ -148,16 +154,16 @@ class ArrayTest {
     val b: Array[Seq[_]] = covariantUpcast(new Array[List[Any]](5))
     b(1) = list
     assertSame(list, b(1))
-    assertThrows(classOf[ArrayStoreException], b(1) = vector)
+    assertThrowsASEIfCompliant(b(1) = vector)
     assertSame(list, b(1))
 
     val c: Array[Number] = covariantUpcast(new Array[Integer](5))
     c(1) = Integer.valueOf(5)
     assertEquals(5, c(1))
-    assertThrows(classOf[ArrayStoreException], c(1) = java.lang.Double.valueOf(5.5))
+    assertThrowsASEIfCompliant(c(1) = java.lang.Double.valueOf(5.5))
     assertEquals(5, c(1))
     if (executingInJVM) {
-      assertThrows(classOf[ArrayStoreException], c(2) = java.lang.Double.valueOf(5.0))
+      assertThrowsASEIfCompliant(c(2) = java.lang.Double.valueOf(5.0))
       assertNull(c(2))
     } else {
       c(2) = java.lang.Double.valueOf(5.0)
@@ -165,28 +171,39 @@ class ArrayTest {
     }
     val c2: Array[Object] = covariantUpcast(c)
     c2(3) = Integer.valueOf(42)
-    assertThrows(classOf[ArrayStoreException], c2(3) = str)
+    assertThrowsASEIfCompliant(c2(3) = str)
     assertEquals(42, c2(3))
     assertEquals(42, c(3))
+
+    // #5471
+    val d: Array[AnyRef] = covariantUpcast(new Array[String](5))
+    d(1) = "foo"
+    assertEquals("foo", d(1))
+    assertThrowsASEIfCompliant(d(1) = vector) // related to #5471
+    assertEquals("foo", d(1))
+    d(2) = null
+    assertNull(d(2))
+    d(3) = hide[AnyRef]("bar") // this was #5471 per se
+    assertEquals("bar", d(3))
 
     val x: Array[AnyRef] = covariantUpcast(new Array[Array[Seq[_]]](5))
     x(1) = new Array[Seq[_]](1)
     x(2) = new Array[List[Any]](1)
-    assertThrows(classOf[ArrayStoreException], x(3) = new Array[String](1))
-    assertThrows(classOf[ArrayStoreException], x(3) = new Array[AnyRef](1))
-    assertThrows(classOf[ArrayStoreException], x(3) = new Array[Int](1))
-    assertThrows(classOf[ArrayStoreException], x(3) = obj)
-    assertThrows(classOf[ArrayStoreException], x(3) = str)
+    assertThrowsASEIfCompliant(x(3) = new Array[String](1))
+    assertThrowsASEIfCompliant(x(3) = new Array[AnyRef](1))
+    assertThrowsASEIfCompliant(x(3) = new Array[Int](1))
+    assertThrowsASEIfCompliant(x(3) = obj)
+    assertThrowsASEIfCompliant(x(3) = str)
     x(1) = null
     assertNull(x(1))
 
     val y: Array[AnyRef] = covariantUpcast(new Array[Array[Int]](5))
     y(1) = new Array[Int](1)
-    assertThrows(classOf[ArrayStoreException], y(3) = new Array[String](1))
-    assertThrows(classOf[ArrayStoreException], y(3) = new Array[AnyRef](1))
-    assertThrows(classOf[ArrayStoreException], y(3) = new Array[List[Any]](1))
-    assertThrows(classOf[ArrayStoreException], y(3) = obj)
-    assertThrows(classOf[ArrayStoreException], y(3) = str)
+    assertThrowsASEIfCompliant(y(3) = new Array[String](1))
+    assertThrowsASEIfCompliant(y(3) = new Array[AnyRef](1))
+    assertThrowsASEIfCompliant(y(3) = new Array[List[Any]](1))
+    assertThrowsASEIfCompliant(y(3) = obj)
+    assertThrowsASEIfCompliant(y(3) = str)
     y(1) = null
     assertNull(y(1))
   }
