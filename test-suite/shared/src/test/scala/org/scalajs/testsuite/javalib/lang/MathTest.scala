@@ -902,6 +902,260 @@ class MathTest {
       assertSameDouble(-x, rint(-x))
   }
 
+  @Test def roundForDouble(): Unit = {
+    import Math.round
+
+    val intLimit = 1L << 52
+    val halfIntLimit = 1L << 51
+    val doubleIntLimit = 1L << 53
+
+    // Specials
+    assertEquals(0L, round(+0.0))
+    assertEquals(0L, round(-0.0))
+    assertEquals(Long.MaxValue, round(Double.PositiveInfinity))
+    assertEquals(Long.MinValue, round(Double.NegativeInfinity))
+    assertEquals(0L, round(Double.NaN))
+
+    // Positive values
+    assertEquals(0L, round(Double.MinPositiveValue))
+    assertEquals(0L, round(java.lang.Double.MIN_NORMAL))
+    assertEquals(0L, round(0.1))
+    assertEquals(1L, round(0.5))
+    assertEquals(1L, round(0.5000000000000001))
+    assertEquals(1L, round(0.999))
+    assertEquals(1L, round(1.4999999999999998))
+    assertEquals(2L, round(1.5))
+    assertEquals(2L, round(2.0))
+    assertEquals(2L, round(2.1))
+    assertEquals(3L, round(2.5))
+    assertEquals(3L, round(2.75))
+    assertEquals(3L, round(3.25))
+    assertEquals(4L, round(3.5))
+    assertEquals(4L, round(3.75))
+    assertEquals(halfIntLimit - 2L, round(halfIntLimit - 1.75))
+    assertEquals(halfIntLimit - 1L, round(halfIntLimit - 1.5))
+    assertEquals(halfIntLimit - 1L, round(halfIntLimit - 1.25))
+    assertEquals(halfIntLimit - 1L, round(halfIntLimit - 1.0))
+    assertEquals(halfIntLimit - 1L, round(halfIntLimit - 0.75))
+    assertEquals(halfIntLimit, round(halfIntLimit - 0.5))
+    assertEquals(halfIntLimit, round(halfIntLimit - 0.25))
+    assertEquals(halfIntLimit, round(halfIntLimit.toDouble))
+    assertEquals(halfIntLimit, round(halfIntLimit + 0.25))
+    assertEquals(halfIntLimit + 1L, round(halfIntLimit + 0.5))
+    assertEquals(halfIntLimit + 1L, round(halfIntLimit + 0.75))
+    assertEquals(halfIntLimit + 1L, round(halfIntLimit + 1.0))
+    assertEquals(halfIntLimit + 1L, round(halfIntLimit + 1.25))
+    assertEquals(halfIntLimit + 2L, round(halfIntLimit + 1.5))
+    assertEquals(intLimit - 2L, round(intLimit - 2.0))
+    assertEquals(intLimit - 1L, round(intLimit - 1.5))
+    assertEquals(intLimit - 1L, round(intLimit - 1.0))
+    assertEquals(intLimit, round(intLimit - 0.5))
+    assertEquals(intLimit, round(intLimit.toDouble))
+
+    val largeIntegers = List(
+      // corner cases just above intLimit
+      intLimit + 1L,
+      intLimit + 2L,
+      intLimit + 3L,
+      intLimit + 4L,
+      // corner cases around doubleIntLimit
+      doubleIntLimit - 4L,
+      doubleIntLimit - 3L,
+      doubleIntLimit - 2L,
+      doubleIntLimit - 1L,
+      doubleIntLimit,
+      doubleIntLimit + 2L,
+      doubleIntLimit + 4L,
+      doubleIntLimit + 6L,
+      doubleIntLimit + 8L,
+      // largest long value that is also a double
+      9223372036854774784L
+    )
+    for (x <- largeIntegers)
+      assertEquals(x, round(x.toDouble))
+
+    val tooLargeIntegers = List(
+      9.223372036854776e18, // 2^63
+      9.223372036854778e18, // next up after 2^63
+      1.8446744073709552e19, // 2^64
+      1.8446744073709556e19, // next up after 2^64
+      3.4028236692093846e38, // 2^128
+      Double.MaxValue
+    )
+    for (x <- tooLargeIntegers)
+      assertEquals(Long.MaxValue, round(x.toDouble))
+
+    // Negative values
+    assertEquals(0L, round(-Double.MinPositiveValue))
+    assertEquals(0L, round(-java.lang.Double.MIN_NORMAL))
+    assertEquals(0L, round(-0.1))
+    assertEquals(0L, round(-0.5))
+    assertEquals(-1L, round(-0.5000000000000001))
+    assertEquals(-1L, round(-0.999))
+    assertEquals(-1L, round(-1.4999999999999998))
+    assertEquals(-1L, round(-1.5))
+    assertEquals(-2L, round(-2.0))
+    assertEquals(-2L, round(-2.1))
+    assertEquals(-2L, round(-2.5))
+    assertEquals(-3L, round(-2.75))
+    assertEquals(-3L, round(-3.25))
+    assertEquals(-3L, round(-3.5))
+    assertEquals(-4L, round(-3.75))
+    assertEquals(-(halfIntLimit - 2L), round(-(halfIntLimit - 1.75)))
+    assertEquals(-(halfIntLimit - 2L), round(-(halfIntLimit - 1.5)))
+    assertEquals(-(halfIntLimit - 1L), round(-(halfIntLimit - 1.25)))
+    assertEquals(-(halfIntLimit - 1L), round(-(halfIntLimit - 1.0)))
+    assertEquals(-(halfIntLimit - 1L), round(-(halfIntLimit - 0.75)))
+    assertEquals(-(halfIntLimit - 1L), round(-(halfIntLimit - 0.5)))
+    assertEquals(-halfIntLimit, round(-(halfIntLimit - 0.25)))
+    assertEquals(-halfIntLimit, round(-halfIntLimit.toDouble))
+    assertEquals(-halfIntLimit, round(-(halfIntLimit + 0.25)))
+    assertEquals(-halfIntLimit, round(-(halfIntLimit + 0.5)))
+    assertEquals(-(halfIntLimit + 1L), round(-(halfIntLimit + 0.75)))
+    assertEquals(-(halfIntLimit + 1L), round(-(halfIntLimit + 1.0)))
+    assertEquals(-(halfIntLimit + 1L), round(-(halfIntLimit + 1.25)))
+    assertEquals(-(halfIntLimit + 1L), round(-(halfIntLimit + 1.5)))
+    assertEquals(-(halfIntLimit + 2L), round(-(halfIntLimit + 1.75)))
+    assertEquals(-(intLimit - 2L), round(-(intLimit - 2.0)))
+    assertEquals(-(intLimit - 2L), round(-(intLimit - 1.5)))
+    assertEquals(-(intLimit - 1L), round(-(intLimit - 1.0)))
+    assertEquals(-(intLimit - 1L), round(-(intLimit - 0.5)))
+    assertEquals(-intLimit, round(-intLimit.toDouble))
+
+    for (x <- largeIntegers)
+      assertEquals(-x, round(-x.toDouble))
+
+    for (x <- tooLargeIntegers) // includes -2^63, which is not actually too large
+      assertEquals(Long.MinValue, round(-x))
+  }
+
+  @Test def roundForFloat(): Unit = {
+    import Math.round
+
+    val intLimit = 1 << 23
+    val halfIntLimit = 1 << 22
+    val doubleIntLimit = 1 << 24
+
+    // Specials
+    assertEquals(0, round(+0.0f))
+    assertEquals(0, round(-0.0f))
+    assertEquals(Int.MaxValue, round(Float.PositiveInfinity))
+    assertEquals(Int.MinValue, round(Float.NegativeInfinity))
+    assertEquals(0, round(Double.NaN))
+
+    // Positive values
+    assertEquals(0, round(Float.MinPositiveValue))
+    assertEquals(0, round(java.lang.Float.MIN_NORMAL))
+    assertEquals(0, round(0.1f))
+    assertEquals(1, round(0.5f))
+    assertEquals(1, round(0.50000006f))
+    assertEquals(1, round(0.999f))
+    assertEquals(1, round(1.4999999f))
+    assertEquals(2, round(1.5f))
+    assertEquals(2, round(2.0f))
+    assertEquals(2, round(2.1f))
+    assertEquals(3, round(2.5f))
+    assertEquals(3, round(2.75f))
+    assertEquals(3, round(3.25f))
+    assertEquals(4, round(3.5f))
+    assertEquals(4, round(3.75f))
+    assertEquals(halfIntLimit - 2, round(halfIntLimit - 1.75f))
+    assertEquals(halfIntLimit - 1, round(halfIntLimit - 1.5f))
+    assertEquals(halfIntLimit - 1, round(halfIntLimit - 1.25f))
+    assertEquals(halfIntLimit - 1, round(halfIntLimit - 1.0f))
+    assertEquals(halfIntLimit - 1, round(halfIntLimit - 0.75f))
+    assertEquals(halfIntLimit, round(halfIntLimit - 0.5f))
+    assertEquals(halfIntLimit, round(halfIntLimit - 0.25f))
+    assertEquals(halfIntLimit, round(halfIntLimit.toFloat))
+    assertEquals(halfIntLimit, round(halfIntLimit + 0.25f))
+    assertEquals(halfIntLimit + 1, round(halfIntLimit + 0.5f))
+    assertEquals(halfIntLimit + 1, round(halfIntLimit + 0.75f))
+    assertEquals(halfIntLimit + 1, round(halfIntLimit + 1.0f))
+    assertEquals(halfIntLimit + 1, round(halfIntLimit + 1.25f))
+    assertEquals(halfIntLimit + 2, round(halfIntLimit + 1.5f))
+    assertEquals(intLimit - 2, round(intLimit - 2.0f))
+    assertEquals(intLimit - 1, round(intLimit - 1.5f))
+    assertEquals(intLimit - 1, round(intLimit - 1.0f))
+    assertEquals(intLimit, round(intLimit - 0.5f))
+    assertEquals(intLimit, round(intLimit.toFloat))
+
+    val largeIntegers = List(
+      // corner cases just above intLimit
+      intLimit + 1,
+      intLimit + 2,
+      intLimit + 3,
+      intLimit + 4,
+      // corner cases around doubleIntLimit
+      doubleIntLimit - 4,
+      doubleIntLimit - 3,
+      doubleIntLimit - 2,
+      doubleIntLimit - 1,
+      doubleIntLimit,
+      doubleIntLimit + 2,
+      doubleIntLimit + 4,
+      doubleIntLimit + 6,
+      doubleIntLimit + 8,
+      // largest int value that is also a float
+      214748352
+    )
+    for (x <- largeIntegers)
+      assertEquals(x, round(x.toFloat))
+
+    val tooLargeIntegers = List(
+      2.14748365e9f, // 2^31
+      2.1474839e9f, // next up after 2^31
+      4.2949673e9f, // 2^32
+      4.2949678e9f, // next up after 2^32
+      1.8446744e19f, // 2^64
+      Float.MaxValue
+    )
+    for (x <- tooLargeIntegers)
+      assertEquals(Int.MaxValue, round(x.toFloat))
+
+    // Negative values
+    assertEquals(0, round(-Float.MinPositiveValue))
+    assertEquals(0, round(-java.lang.Float.MIN_NORMAL))
+    assertEquals(0, round(-0.1f))
+    assertEquals(0, round(-0.5f))
+    assertEquals(-1, round(-0.50000006f))
+    assertEquals(-1, round(-0.999f))
+    assertEquals(-1, round(-1.4999999f))
+    assertEquals(-1, round(-1.5f))
+    assertEquals(-2, round(-2.0f))
+    assertEquals(-2, round(-2.1f))
+    assertEquals(-2, round(-2.5f))
+    assertEquals(-3, round(-2.75f))
+    assertEquals(-3, round(-3.25f))
+    assertEquals(-3, round(-3.5f))
+    assertEquals(-4, round(-3.75f))
+    assertEquals(-(halfIntLimit - 2), round(-(halfIntLimit - 1.75f)))
+    assertEquals(-(halfIntLimit - 2), round(-(halfIntLimit - 1.5f)))
+    assertEquals(-(halfIntLimit - 1), round(-(halfIntLimit - 1.25f)))
+    assertEquals(-(halfIntLimit - 1), round(-(halfIntLimit - 1.0f)))
+    assertEquals(-(halfIntLimit - 1), round(-(halfIntLimit - 0.75f)))
+    assertEquals(-(halfIntLimit - 1), round(-(halfIntLimit - 0.5f)))
+    assertEquals(-halfIntLimit, round(-(halfIntLimit - 0.25f)))
+    assertEquals(-halfIntLimit, round(-halfIntLimit.toFloat))
+    assertEquals(-halfIntLimit, round(-(halfIntLimit + 0.25f)))
+    assertEquals(-halfIntLimit, round(-(halfIntLimit + 0.5f)))
+    assertEquals(-(halfIntLimit + 1), round(-(halfIntLimit + 0.75f)))
+    assertEquals(-(halfIntLimit + 1), round(-(halfIntLimit + 1.0f)))
+    assertEquals(-(halfIntLimit + 1), round(-(halfIntLimit + 1.25f)))
+    assertEquals(-(halfIntLimit + 1), round(-(halfIntLimit + 1.5f)))
+    assertEquals(-(halfIntLimit + 2), round(-(halfIntLimit + 1.75f)))
+    assertEquals(-(intLimit - 2), round(-(intLimit - 2.0f)))
+    assertEquals(-(intLimit - 2), round(-(intLimit - 1.5f)))
+    assertEquals(-(intLimit - 1), round(-(intLimit - 1.0f)))
+    assertEquals(-(intLimit - 1), round(-(intLimit - 0.5f)))
+    assertEquals(-intLimit, round(-intLimit.toFloat))
+
+    for (x <- largeIntegers)
+      assertEquals(-x, round(-x.toFloat))
+
+    for (x <- tooLargeIntegers) // includes -2^31, which is not actually too large
+      assertEquals(Int.MinValue, round(-x))
+  }
+
   @Test def addExact(): Unit = {
     assertEquals(0, Math.addExact(0, 0))
     assertEquals(1, Math.addExact(0, 1))

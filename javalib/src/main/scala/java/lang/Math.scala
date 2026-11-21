@@ -148,8 +148,45 @@ object Math {
     }
   }
 
-  @inline def round(a: scala.Float): scala.Int = js.Math.round(a).toInt
-  @inline def round(a: scala.Double): scala.Long = js.Math.round(a).toLong
+  @inline def round(a: scala.Float): scala.Int = {
+    LinkingInfo.linkTimeIf(LinkingInfo.isWebAssembly) {
+      // Round to even with the rint intrinsic, then saturate and turn NaN into 0 with toInt
+      val roundedEven = rint(a.toDouble).toFloat
+      val intVal = roundedEven.toInt
+
+      /* We need to break ties towards +Infinity instead of to-even.
+       * Add 1 if we had a tie-break that rounded downwards.
+       *
+       * The subtraction is always exact: the difference between a floating
+       * point value and the nearest integer is always a floating point value.
+       *
+       * The condition should be predictably false, so we use a test instead of
+       * unconditionally doing `intVal + Boolean.toInt(<condition>)`.
+       *
+       * The condition is always false in saturating cases, so +1 does not overflow.
+       */
+      if (a - roundedEven == 0.5f)
+        intVal + 1
+      else
+        intVal
+    } {
+      js.Math.round(a.toDouble).toInt
+    }
+  }
+
+  @inline def round(a: scala.Double): scala.Long = {
+    LinkingInfo.linkTimeIf(LinkingInfo.isWebAssembly) {
+      // See round(Float)
+      val roundedEven = rint(a)
+      val longVal = roundedEven.toLong
+      if (a - roundedEven == 0.5)
+        longVal + 1L
+      else
+        longVal
+    } {
+      js.Math.round(a).toLong
+    }
+  }
 
   @inline def sqrt(a: scala.Double): scala.Double =
     throw new Error("Stub filled in by the compiler")
