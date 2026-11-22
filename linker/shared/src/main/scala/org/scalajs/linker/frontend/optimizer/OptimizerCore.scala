@@ -2920,6 +2920,18 @@ private[optimizer] abstract class OptimizerCore(
       throw new AssertionError("A method to inline must be conrete")
     }
 
+    val inlineScope = scope.inlining(allocationSites, target)
+    inlineBody(optReceiver, formals, resultType, body, args, isStat, usePreTransform)(
+        cont)(inlineScope, pos)
+  }
+
+  private def inlineBody(optReceiver: Option[(Type, PreTransform)],
+      formals: List[ParamDef], resultType: Type, body: Tree,
+      args: List[PreTransform], isStat: Boolean,
+      usePreTransform: Boolean)(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+
     def finishTransformArgsAsStat(): Tree = {
       val newOptReceiver =
         optReceiver.fold[Tree](Skip())(r => checkNotNullStatement(r._2))
@@ -2968,13 +2980,12 @@ private[optimizer] abstract class OptimizerCore(
         }
 
       case _ =>
-        val targetID = (allocationSites, target)
-        inlineBody(optReceiver, formals, resultType, body, args, isStat,
-            usePreTransform)(cont)(scope.inlining(targetID), pos)
+        inlineWithBindings(optReceiver, formals, resultType, body, args, isStat,
+            usePreTransform)(cont)
     }
   }
 
-  private def inlineBody(optReceiver: Option[(Type, PreTransform)],
+  private def inlineWithBindings(optReceiver: Option[(Type, PreTransform)],
       formals: List[ParamDef], resultType: Type, body: Tree,
       args: List[PreTransform], isStat: Boolean,
       usePreTransform: Boolean)(
