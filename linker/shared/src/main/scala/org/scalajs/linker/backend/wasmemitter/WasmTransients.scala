@@ -119,8 +119,6 @@ object WasmTransients {
     }
 
     def wasmInstr: wa.SimpleInstr = (op: @switch) match {
-      case I32GtU => wa.I32GtU
-
       case I32Rotl => wa.I32Rotl
       case I32Rotr => wa.I32Rotr
 
@@ -144,22 +142,17 @@ object WasmTransients {
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 
-    final val I32GtU = 1
+    final val I32Rotl = 1
+    final val I32Rotr = 2
 
-    final val I32Rotl = 4
-    final val I32Rotr = 5
+    final val I64Rotl = 3
+    final val I64Rotr = 4
 
-    final val I64Rotl = 8
-    final val I64Rotr = 9
+    final val F32Copysign = 5
 
-    final val F32Copysign = 10
-
-    final val F64Copysign = 11
+    final val F64Copysign = 6
 
     def resultTypeOf(op: Code): Type = (op: @switch) match {
-      case I32GtU =>
-        BooleanType
-
       case I32Rotl | I32Rotr =>
         IntType
 

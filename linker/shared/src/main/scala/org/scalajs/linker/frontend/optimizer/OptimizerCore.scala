@@ -3368,8 +3368,8 @@ private[optimizer] abstract class OptimizerCore(
         withNewLocalDef(Binding.temp(LocalName("codePoint"), targs.head)) { (cpLocalDef, cont1) =>
           cont1(PreTransTree(Block(
             If(
-              Transient(WasmBinaryOp(WasmBinaryOp.I32GtU,
-                  cpLocalDef.newReplacement, IntLiteral(Character.MAX_CODE_POINT))),
+              BinaryOp(BinaryOp.Int_unsigned_>,
+                  cpLocalDef.newReplacement, IntLiteral(Character.MAX_CODE_POINT)),
               UnaryOp(UnaryOp.Throw,
                   New(IllegalArgumentExceptionClass, MethodIdent(NoArgConstructorName), Nil)),
               Skip()
