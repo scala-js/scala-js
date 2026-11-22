@@ -615,7 +615,7 @@ private[optimizer] abstract class OptimizerCore(
 
       case tree: ApplyStatically =>
         trampoline {
-          pretransformStaticApply(tree, isStat, usePreTransform = false)(
+          pretransformApplyStatically(tree, isStat, usePreTransform = false)(
               finishTransform(isStat))
         }
 
@@ -1090,7 +1090,7 @@ private[optimizer] abstract class OptimizerCore(
             usePreTransform = true)(cont)
 
       case tree: ApplyStatically =>
-        pretransformStaticApply(tree, isStat = false,
+        pretransformApplyStatically(tree, isStat = false,
             usePreTransform = true)(cont)
 
       case tree: ApplyStatic =>
@@ -2504,31 +2504,41 @@ private[optimizer] abstract class OptimizerCore(
       PrimTypeToBoxedClass(tpe)
   }
 
-  private def pretransformStaticApply(tree: ApplyStatically, isStat: Boolean,
+  private def pretransformApplyStatically(tree: ApplyStatically, isStat: Boolean,
       usePreTransform: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
-    val ApplyStatically(flags, receiver, className,
-        methodIdent @ MethodIdent(methodName), args) = tree
+    val ApplyStatically(flags, receiver, className, methodIdent, args) = tree
     implicit val pos = tree.pos
 
-    def treeNotInlined0(transformedReceiver: Tree, transformedArgs: List[Tree]) = {
-      cont(PreTransTree(ApplyStatically(flags, transformedReceiver, className,
-          methodIdent, transformedArgs)(tree.tpe)))
+    pretransformExprs(receiver, args) { (treceiver, targs) =>
+      pretransformApplyStatically(flags, treceiver, className, methodIdent,
+          targs, tree.tpe, isStat, usePreTransform)(cont)
     }
+  }
+
+  private def pretransformApplyStatically(flags: ApplyFlags, treceiver: PreTransform,
+      className: ClassName, methodIdent: MethodIdent, targs: List[PreTransform],
+      resultType: Type, isStat: Boolean, usePreTransform: Boolean)(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+
+    def treeNotInlined: TailRec[Tree] = {
+      cont(PreTransTree(ApplyStatically(flags, finishTransformExpr(treceiver),
+          className, methodIdent, targs.map(finishTransformExpr(_)))(resultType)))
+    }
+
+    val methodName = methodIdent.name
 
     if (methodName.isReflectiveProxy) {
       // Never inline reflective proxies
-      treeNotInlined0(transformExpr(receiver), args.map(transformExpr))
+      treeNotInlined
     } else {
       val target = staticCall(className, MemberNamespace.forNonStaticCall(flags),
           methodName)
-      pretransformExprs(receiver, args) { (treceiver, targs) =>
-        pretransformSingleDispatch(flags, target, Some(treceiver), targs, isStat, usePreTransform)(
-            cont) {
-          treeNotInlined0(finishTransformExpr(treceiver),
-              targs.map(finishTransformExpr))
-        }
+      pretransformSingleDispatch(flags, target, Some(treceiver), targs, isStat, usePreTransform)(
+          cont) {
+        treeNotInlined
       }
     }
   }
@@ -2920,14 +2930,73 @@ private[optimizer] abstract class OptimizerCore(
       throw new AssertionError("A method to inline must be conrete")
     }
 
+    val inlineScope = scope.inlining(allocationSites, target)
+    inlineBody(optReceiver, formals, resultType, body, args, isStat, usePreTransform)(
+        cont)(inlineScope, pos)
+  }
+
+  private def inlineBody(optReceiver: Option[(Type, PreTransform)],
+      formals: List[ParamDef], resultType: Type, body: Tree,
+      args: List[PreTransform], isStat: Boolean,
+      usePreTransform: Boolean)(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+
+    /* In the general case, when inlining a body, we must first bind the
+     * receiver and arguments to new LocalDefs, then substitute those for the
+     * VarRef's in the body.
+     *
+     * There are a number of common body shapes for which we can avoid these
+     * bindings, without altering evaluation order. This significantly reduces
+     * code size, and sometimes helps downstream operations, notably those that
+     * rely on folding nested tree shapes.
+     *
+     * This method recognizes those shapes and applies substitutions without
+     * bindings. If none of the shapes match the body, we go to
+     * inlineBodyWithBindings.
+     */
+
+    def finishTransformReceiverAsStat(): Tree =
+      optReceiver.fold[Tree](Skip())(r => checkNotNullStatement(r._2))
+
     def finishTransformArgsAsStat(): Tree = {
-      val newOptReceiver =
-        optReceiver.fold[Tree](Skip())(r => checkNotNullStatement(r._2))
+      val newOptReceiver = finishTransformReceiverAsStat()
       val newArgs = args.map(finishTransformStat(_))
       Block(newOptReceiver :: newArgs)
     }
 
+    def forceGetReceiver(): (Type, PreTransform) = {
+      optReceiver.getOrElse {
+        throw new AssertionError("There was a `this`, there should be a receiver")
+      }
+    }
+
+    def forceGetCheckedReceiver(): PreTransform = {
+      val (declaredType, receiver) = forceGetReceiver()
+      foldCast(checkNotNull(receiver), declaredType)
+    }
+
+    def matchFormals(innerArgs: List[Tree]): Boolean = {
+      innerArgs.size == formals.size && formals.zip(innerArgs).forall {
+        case (formal, innerArg) =>
+          innerArg match {
+            case VarRef(name) => name == formal.name.name
+            case _            => false
+          }
+      }
+    }
+
+    def makeContDiscardingReceiver(): PreTransCont = {
+      val receiverStat = finishTransformReceiverAsStat()
+      if (receiverStat.isInstanceOf[Skip])
+        cont
+      else
+        result => cont(PreTransBlock(receiverStat, result))
+    }
+
     body match {
+      // Some trivial bodies
+
       case Skip() =>
         assert(isStat, "Found Skip() in expression position")
         cont(PreTransTree(finishTransformArgsAsStat()))
@@ -2936,45 +3005,86 @@ private[optimizer] abstract class OptimizerCore(
         cont(PreTransTree(Block(finishTransformArgsAsStat(), body)))
 
       case This() if args.isEmpty =>
-        assert(optReceiver.isDefined,
-            "There was a `this`, there should be a receiver")
-        cont(foldCast(checkNotNull(optReceiver.get._2), optReceiver.get._1))
+        cont(forceGetCheckedReceiver())
 
+      // Getters
       case Select(This(), field) if formals.isEmpty =>
-        assert(optReceiver.isDefined,
-            "There was a `this`, there should be a receiver")
-        pretransformSelectCommon(body.tpe, optReceiver.get._2,
-            optQualDeclaredType = Some(optReceiver.get._1),
+        val (declaredType, receiver) = forceGetReceiver()
+        pretransformSelectCommon(body.tpe, receiver,
+            optQualDeclaredType = Some(declaredType),
             field, isLhsOfAssign = false)(cont)
 
+      // Setters
       case Assign(lhs @ Select(This(), field), VarRef(rhsName))
           if formals.size == 1 && formals.head.name.name == rhsName =>
         assert(isStat, "Found Assign in expression position")
-        assert(optReceiver.isDefined,
-            "There was a `this`, there should be a receiver")
 
-        val treceiver = optReceiver.get._2
+        val (declaredType, receiver) = forceGetReceiver()
         val trhs = args.head
 
         if (!isFieldRead(field.name)) {
           // Field is never read, discard assign, keep side effects only.
           cont(PreTransTree(finishTransformArgsAsStat()))
         } else {
-          pretransformSelectCommon(lhs.tpe, treceiver,
-              optQualDeclaredType = Some(optReceiver.get._1),
+          pretransformSelectCommon(lhs.tpe, receiver,
+              optQualDeclaredType = Some(declaredType),
               field, isLhsOfAssign = true) { tlhs =>
             pretransformAssign(tlhs, args.head)(cont)
           }
         }
 
+      // Static forwarders
+      case Apply(flags, innerReceiver @ LoadModule(receiverCls), method, innerArgs)
+          if matchFormals(innerArgs) && hasElidableConstructors(receiverCls) =>
+        val cont1 = makeContDiscardingReceiver()
+        pretransformExpr(innerReceiver) { tinnerReceiver =>
+          pretransformApply(flags, tinnerReceiver, method, args, body.tpe,
+              isStat, usePreTransform)(cont1)
+        }
+
+      // Bridges
+      case Apply(flags, This(), method, innerArgs) if matchFormals(innerArgs) =>
+        pretransformApply(flags, forceGetCheckedReceiver(), method, args,
+            body.tpe, isStat, usePreTransform)(cont)
+
+      // Mixin forwarders
+      case ApplyStatically(flags, This(), cls, method, innerArgs) if matchFormals(innerArgs) =>
+        pretransformApplyStatically(flags, forceGetCheckedReceiver(), cls,
+            method, args, body.tpe, isStat, usePreTransform)(cont)
+
+      // Mostly for consistency with the other kinds of applications
+      case ApplyStatic(flags, cls, method, innerArgs) if matchFormals(innerArgs) =>
+        val cont1 = makeContDiscardingReceiver()
+        pretransformApplyStatic(flags, cls, method, args, body.tpe,
+            isStat, usePreTransform)(cont1)
+
+      /* Shapes of some core javalib methods.
+       * Particularly useful for String.length(), String.charAt(i),
+       * Integer.unsigned_cmp(a, b), etc.
+       */
+
+      case UnaryOp(op, innerLhs) if matchFormals(innerLhs :: Nil) =>
+        val cont1 = makeContDiscardingReceiver()
+        pretransformUnaryOp(op, args.head)(cont1)
+
+      case UnaryOp(op, This()) if formals.isEmpty =>
+        pretransformUnaryOp(op, forceGetCheckedReceiver())(cont)
+
+      case BinaryOp(op, innerLhs, innerRhs)
+          if matchFormals(innerLhs :: innerRhs :: Nil) =>
+        val cont1 = makeContDiscardingReceiver()
+        pretransformBinaryOp(op, args.head, args.tail.head)(cont1)
+
+      case BinaryOp(op, This(), innerRhs) if matchFormals(innerRhs :: Nil) =>
+        pretransformBinaryOp(op, forceGetCheckedReceiver(), args.head)(cont)
+
       case _ =>
-        val targetID = (allocationSites, target)
-        inlineBody(optReceiver, formals, resultType, body, args, isStat,
-            usePreTransform)(cont)(scope.inlining(targetID), pos)
+        inlineWithBindings(optReceiver, formals, resultType, body, args, isStat,
+            usePreTransform)(cont)
     }
   }
 
-  private def inlineBody(optReceiver: Option[(Type, PreTransform)],
+  private def inlineWithBindings(optReceiver: Option[(Type, PreTransform)],
       formals: List[ParamDef], resultType: Type, body: Tree,
       args: List[PreTransform], isStat: Boolean,
       usePreTransform: Boolean)(
@@ -3831,40 +3941,47 @@ private[optimizer] abstract class OptimizerCore(
     val UnaryOp(op, arg) = tree
 
     pretransformExpr(arg) { tlhs =>
-      def folded: PreTransform =
-        foldUnaryOp(op, tlhs)
+      pretransformUnaryOp(op, tlhs)(cont)
+    }
+  }
 
-      op match {
-        case UnaryOp.WrapAsThrowable =>
-          typeTestResult(tlhs.tpe, ThrowableClassType.toNonNullable) match {
-            case TypeTestResult.Subtype =>
-              cont(tlhs)
-            case TypeTestResult.NotAnInstance =>
-              pretransformNew(AllocationSite.Tree(tree), JavaScriptExceptionClass,
-                  MethodIdent(AnyArgConstructorName), tlhs :: Nil)(cont)
-            case TypeTestResult.Unknown | TypeTestResult.SubtypeOrNull =>
-              cont(folded)
-            case TypeTestResult.NotAnInstanceUnlessNull =>
-              throw new AssertionError(s"Unreachable; tlhs.tpe was ${tlhs.tpe} at $pos")
-          }
+  private def pretransformUnaryOp(op: UnaryOp.Code, tlhs: PreTransform)(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
-        case UnaryOp.UnwrapFromThrowable =>
-          typeTestResult(tlhs.tpe, JavaScriptExceptionClassType.toNonNullable,
-              testTypeKnownToBeFinal = true) match {
-            case TypeTestResult.Subtype | TypeTestResult.SubtypeOrNull =>
-              pretransformSelectCommon(AnyType, tlhs, optQualDeclaredType = None,
-                  FieldIdent(exceptionFieldName), isLhsOfAssign = false)(cont)
-            case TypeTestResult.NotAnInstance =>
-              cont(checkNotNull(tlhs))
-            case TypeTestResult.Unknown =>
-              cont(folded)
-            case TypeTestResult.NotAnInstanceUnlessNull =>
-              throw new AssertionError(s"Unreachable; tlhs.tpe was ${tlhs.tpe} at $pos")
-          }
+    def folded: PreTransform =
+      foldUnaryOp(op, tlhs)
 
-        case _ =>
-          expandOps(folded)(cont)
-      }
+    op match {
+      case UnaryOp.WrapAsThrowable =>
+        typeTestResult(tlhs.tpe, ThrowableClassType.toNonNullable) match {
+          case TypeTestResult.Subtype =>
+            cont(tlhs)
+          case TypeTestResult.NotAnInstance =>
+            pretransformNew(AllocationSite.Anonymous, JavaScriptExceptionClass,
+                MethodIdent(AnyArgConstructorName), tlhs :: Nil)(cont)
+          case TypeTestResult.Unknown | TypeTestResult.SubtypeOrNull =>
+            cont(folded)
+          case TypeTestResult.NotAnInstanceUnlessNull =>
+            throw new AssertionError(s"Unreachable; tlhs.tpe was ${tlhs.tpe} at $pos")
+        }
+
+      case UnaryOp.UnwrapFromThrowable =>
+        typeTestResult(tlhs.tpe, JavaScriptExceptionClassType.toNonNullable,
+            testTypeKnownToBeFinal = true) match {
+          case TypeTestResult.Subtype | TypeTestResult.SubtypeOrNull =>
+            pretransformSelectCommon(AnyType, tlhs, optQualDeclaredType = None,
+                FieldIdent(exceptionFieldName), isLhsOfAssign = false)(cont)
+          case TypeTestResult.NotAnInstance =>
+            cont(checkNotNull(tlhs))
+          case TypeTestResult.Unknown =>
+            cont(folded)
+          case TypeTestResult.NotAnInstanceUnlessNull =>
+            throw new AssertionError(s"Unreachable; tlhs.tpe was ${tlhs.tpe} at $pos")
+        }
+
+      case _ =>
+        expandOps(folded)(cont)
     }
   }
 
@@ -3874,8 +3991,15 @@ private[optimizer] abstract class OptimizerCore(
     val BinaryOp(op, lhs, rhs) = tree
 
     pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
-      expandOps(foldBinaryOp(op, tlhs, trhs))(cont)
+      pretransformBinaryOp(op, tlhs, trhs)(cont)
     }
+  }
+
+  private def pretransformBinaryOp(op: BinaryOp.Code, tlhs: PreTransform, trhs: PreTransform)(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+
+    expandOps(foldBinaryOp(op, tlhs, trhs))(cont)
   }
 
   /** Expands some unary and binary ops into lowered or optimized subexpressions.

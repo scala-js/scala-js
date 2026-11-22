@@ -2584,8 +2584,20 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               if (isStat) jstpe.VoidType
               else toIRType(tree.tpe)
 
-            js.If(genExpr(cond), genStatOrExpr(thenp, isStat),
+            val result = js.If(genExpr(cond), genStatOrExpr(thenp, isStat),
                 genStatOrExpr(elsep, isStat))(tpe)
+
+            /* Rewrite `if (cond) 1 else 0` to `boolToInt(cond)`.
+             * The optimizer also performs that optimization. But if do it now,
+             * there are more places where the optimizer can identify that a
+             * method body can be inlined without bindings.
+             */
+            result match {
+              case js.If(genCond, js.IntLiteral(1), js.IntLiteral(0)) =>
+                js.UnaryOp(js.UnaryOp.BoolToInt, genCond)
+              case _ =>
+                result
+            }
           }
 
           if (isStat && currentMethodSym.isClassConstructor) {

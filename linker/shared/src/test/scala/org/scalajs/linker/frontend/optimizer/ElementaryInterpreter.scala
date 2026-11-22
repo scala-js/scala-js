@@ -166,6 +166,7 @@ object ElementaryInterpreter {
       case IntToDouble       => double(asInt(arg).toDouble)
       case LongToInt         => int(asLong(arg).toInt)
       case UnsignedIntToLong => long(Integer.toUnsignedLong(asInt(arg)))
+      case BoolToInt         => int(if (asBool(arg)) 1 else 0)
 
       case _ =>
         throw new UnsupportedOperationException(
