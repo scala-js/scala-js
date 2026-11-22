@@ -443,33 +443,61 @@ class MathTest {
   }
 
   @Test def copySignForDouble(): Unit = {
-    assertSameDouble(Double.PositiveInfinity, Math.copySign(Double.PositiveInfinity, 1.0))
-    assertSameDouble(Double.NegativeInfinity, Math.copySign(Double.PositiveInfinity, -1.0))
-    assertSameDouble(-5.0, Math.copySign(5.0, -0.0))
-    assertSameDouble(10.5, Math.copySign(-10.5, +0.0))
-    assertSameDouble(65.25, Math.copySign(65.25, 52.0))
-    assertSameDouble(-65.25, Math.copySign(-65.25, -52.0))
-    assertSameDouble(-0.0, Math.copySign(+0.0, -52.0))
-    assertSameDouble(Double.NaN, Math.copySign(Double.NaN, -5.0))
+    @noinline
+    def testNoinline(expected: Double, x: Double, y: Double): Unit =
+      assertSameDouble(expected, Math.copySign(x, y))
+
+    @inline
+    def test(expected: Double, x: Double, y: Double): Unit = {
+      testNoinline(expected, x, y)
+      assertSameDouble(expected, Math.copySign(x, y))
+    }
+
+    test(Double.PositiveInfinity, Double.PositiveInfinity, 1.0)
+    test(Double.NegativeInfinity, Double.PositiveInfinity, -1.0)
+    test(-5.0, 5.0, -0.0)
+    test(10.5, -10.5, +0.0)
+    test(65.25, 65.25, 52.0)
+    test(-65.25, -65.25, -52.0)
+    test(-0.0, +0.0, -52.0)
+    test(Double.NaN, Double.NaN, -5.0)
 
     // NaN as sign argument may be considered positive or negative
     val nanSignResult = Math.copySign(-5.0, Double.NaN)
     assertTrue(nanSignResult == 5.0 || nanSignResult == -5.0)
+
+    @noinline def getNaN(): Double = Double.NaN
+    val nanSignResult2 = Math.copySign(-5.0, getNaN())
+    assertTrue(nanSignResult2 == 5.0 || nanSignResult2 == -5.0)
   }
 
   @Test def copySignForFloat(): Unit = {
-    assertSameFloat(Float.PositiveInfinity, Math.copySign(Float.PositiveInfinity, 1.0f))
-    assertSameFloat(Float.NegativeInfinity, Math.copySign(Float.PositiveInfinity, -1.0f))
-    assertSameFloat(-5.0f, Math.copySign(5.0f, -0.0f))
-    assertSameFloat(10.5f, Math.copySign(-10.5f, +0.0f))
-    assertSameFloat(65.25f, Math.copySign(65.25f, 52.0f))
-    assertSameFloat(-65.25f, Math.copySign(-65.25f, -52.0f))
-    assertSameFloat(-0.0f, Math.copySign(+0.0f, -52.0f))
-    assertSameFloat(Float.NaN, Math.copySign(Float.NaN, -5.0f))
+    @noinline
+    def testNoinline(expected: Float, x: Float, y: Float): Unit =
+      assertSameDouble(expected, Math.copySign(x, y))
+
+    @inline
+    def test(expected: Float, x: Float, y: Float): Unit = {
+      testNoinline(expected, x, y)
+      assertSameDouble(expected, Math.copySign(x, y))
+    }
+
+    test(Float.PositiveInfinity, Float.PositiveInfinity, 1.0f)
+    test(Float.NegativeInfinity, Float.PositiveInfinity, -1.0f)
+    test(-5.0f, 5.0f, -0.0f)
+    test(10.5f, -10.5f, +0.0f)
+    test(65.25f, 65.25f, 52.0f)
+    test(-65.25f, -65.25f, -52.0f)
+    test(-0.0f, +0.0f, -52.0f)
+    test(Float.NaN, Float.NaN, -5.0f)
 
     // NaN as sign argument may be considered positive or negative
     val nanSignResult = Math.copySign(-5.0f, Float.NaN)
     assertTrue(nanSignResult == 5.0f || nanSignResult == -5.0f)
+
+    @noinline def getNaN(): Float = Float.NaN
+    val nanSignResult2 = Math.copySign(-5.0f, getNaN())
+    assertTrue(nanSignResult2 == 5.0f || nanSignResult2 == -5.0f)
   }
 
   @Test def getExponentForFloat(): Unit = {
@@ -795,52 +823,60 @@ class MathTest {
   }
 
   @Test def rintForDouble(): Unit = {
-    import Math.rint
+    @noinline
+    def testNoInline(expected: Double, value: Double): Unit =
+      assertSameDouble(expected, Math.rint(value))
+
+    @inline
+    def test(expected: Double, value: Double): Unit = {
+      testNoInline(expected, value)
+      assertSameDouble(expected, Math.rint(value))
+    }
 
     val intLimit = (1L << 52).toDouble
     val halfIntLimit = (1L << 51).toDouble
     val doubleIntLimit = (1L << 53).toDouble
 
     // Specials
-    assertSameDouble(+0.0, rint(+0.0))
-    assertSameDouble(-0.0, rint(-0.0))
-    assertSameDouble(Double.PositiveInfinity, rint(Double.PositiveInfinity))
-    assertSameDouble(Double.NegativeInfinity, rint(Double.NegativeInfinity))
-    assertSameDouble(Double.NaN, rint(Double.NaN))
+    test(+0.0, +0.0)
+    test(-0.0, -0.0)
+    test(Double.PositiveInfinity, Double.PositiveInfinity)
+    test(Double.NegativeInfinity, Double.NegativeInfinity)
+    test(Double.NaN, Double.NaN)
 
     // Positive values
-    assertSameDouble(+0.0, rint(Double.MinPositiveValue))
-    assertSameDouble(+0.0, rint(java.lang.Double.MIN_NORMAL))
-    assertSameDouble(+0.0, rint(0.1))
-    assertSameDouble(+0.0, rint(0.5))
-    assertSameDouble(1.0, rint(0.5000000000000001))
-    assertSameDouble(1.0, rint(0.999))
-    assertSameDouble(1.0, rint(1.4999999999999998))
-    assertSameDouble(2.0, rint(1.5))
-    assertSameDouble(2.0, rint(2.0))
-    assertSameDouble(2.0, rint(2.1))
-    assertSameDouble(2.0, rint(2.5))
-    assertSameDouble(3.0, rint(2.75))
-    assertSameDouble(3.0, rint(3.25))
-    assertSameDouble(4.0, rint(3.5))
-    assertSameDouble(4.0, rint(3.75))
-    assertSameDouble(halfIntLimit - 2.0, rint(halfIntLimit - 1.5))
-    assertSameDouble(halfIntLimit - 1.0, rint(halfIntLimit - 1.25))
-    assertSameDouble(halfIntLimit - 1.0, rint(halfIntLimit - 1.0))
-    assertSameDouble(halfIntLimit - 1.0, rint(halfIntLimit - 0.75))
-    assertSameDouble(halfIntLimit, rint(halfIntLimit - 0.5))
-    assertSameDouble(halfIntLimit, rint(halfIntLimit - 0.25))
-    assertSameDouble(halfIntLimit, rint(halfIntLimit))
-    assertSameDouble(halfIntLimit, rint(halfIntLimit + 0.25))
-    assertSameDouble(halfIntLimit, rint(halfIntLimit + 0.5))
-    assertSameDouble(halfIntLimit + 1.0, rint(halfIntLimit + 0.75))
-    assertSameDouble(halfIntLimit + 1.0, rint(halfIntLimit + 1.0))
-    assertSameDouble(halfIntLimit + 1.0, rint(halfIntLimit + 1.25))
-    assertSameDouble(halfIntLimit + 2.0, rint(halfIntLimit + 1.5))
-    assertSameDouble(intLimit - 2.0, rint(intLimit - 1.5))
-    assertSameDouble(intLimit - 1.0, rint(intLimit - 1.0))
-    assertSameDouble(intLimit, rint(intLimit - 0.5))
-    assertSameDouble(intLimit, rint(intLimit))
+    test(+0.0, Double.MinPositiveValue)
+    test(+0.0, java.lang.Double.MIN_NORMAL)
+    test(+0.0, 0.1)
+    test(+0.0, 0.5)
+    test(1.0, 0.5000000000000001)
+    test(1.0, 0.999)
+    test(1.0, 1.4999999999999998)
+    test(2.0, 1.5)
+    test(2.0, 2.0)
+    test(2.0, 2.1)
+    test(2.0, 2.5)
+    test(3.0, 2.75)
+    test(3.0, 3.25)
+    test(4.0, 3.5)
+    test(4.0, 3.75)
+    test(halfIntLimit - 2.0, halfIntLimit - 1.5)
+    test(halfIntLimit - 1.0, halfIntLimit - 1.25)
+    test(halfIntLimit - 1.0, halfIntLimit - 1.0)
+    test(halfIntLimit - 1.0, halfIntLimit - 0.75)
+    test(halfIntLimit, halfIntLimit - 0.5)
+    test(halfIntLimit, halfIntLimit - 0.25)
+    test(halfIntLimit, halfIntLimit)
+    test(halfIntLimit, halfIntLimit + 0.25)
+    test(halfIntLimit, halfIntLimit + 0.5)
+    test(halfIntLimit + 1.0, halfIntLimit + 0.75)
+    test(halfIntLimit + 1.0, halfIntLimit + 1.0)
+    test(halfIntLimit + 1.0, halfIntLimit + 1.25)
+    test(halfIntLimit + 2.0, halfIntLimit + 1.5)
+    test(intLimit - 2.0, intLimit - 1.5)
+    test(intLimit - 1.0, intLimit - 1.0)
+    test(intLimit, intLimit - 0.5)
+    test(intLimit, intLimit)
 
     val largeIntegers = List(
       // corner cases just above intLimit
@@ -862,44 +898,44 @@ class MathTest {
       Double.MaxValue
     )
     for (x <- largeIntegers)
-      assertSameDouble(x, rint(x))
+      test(x, x)
 
     // Negative values
-    assertSameDouble(-0.0, rint(-Double.MinPositiveValue))
-    assertSameDouble(-0.0, rint(-java.lang.Double.MIN_NORMAL))
-    assertSameDouble(-0.0, rint(-0.1))
-    assertSameDouble(-0.0, rint(-0.5))
-    assertSameDouble(-1.0, rint(-0.5000000000000001))
-    assertSameDouble(-1.0, rint(-0.999))
-    assertSameDouble(-1.0, rint(-1.4999999999999998))
-    assertSameDouble(-2.0, rint(-1.5))
-    assertSameDouble(-2.0, rint(-2.0))
-    assertSameDouble(-2.0, rint(-2.1))
-    assertSameDouble(-2.0, rint(-2.5))
-    assertSameDouble(-3.0, rint(-2.75))
-    assertSameDouble(-3.0, rint(-3.25))
-    assertSameDouble(-4.0, rint(-3.5))
-    assertSameDouble(-4.0, rint(-3.75))
-    assertSameDouble(-(halfIntLimit - 2.0), rint(-(halfIntLimit - 1.5)))
-    assertSameDouble(-(halfIntLimit - 1.0), rint(-(halfIntLimit - 1.25)))
-    assertSameDouble(-(halfIntLimit - 1.0), rint(-(halfIntLimit - 1.0)))
-    assertSameDouble(-(halfIntLimit - 1.0), rint(-(halfIntLimit - 0.75)))
-    assertSameDouble(-halfIntLimit, rint(-(halfIntLimit - 0.5)))
-    assertSameDouble(-halfIntLimit, rint(-(halfIntLimit - 0.25)))
-    assertSameDouble(-halfIntLimit, rint(-halfIntLimit))
-    assertSameDouble(-halfIntLimit, rint(-(halfIntLimit + 0.25)))
-    assertSameDouble(-halfIntLimit, rint(-(halfIntLimit + 0.5)))
-    assertSameDouble(-(halfIntLimit + 1.0), rint(-(halfIntLimit + 0.75)))
-    assertSameDouble(-(halfIntLimit + 1.0), rint(-(halfIntLimit + 1.0)))
-    assertSameDouble(-(halfIntLimit + 1.0), rint(-(halfIntLimit + 1.25)))
-    assertSameDouble(-(halfIntLimit + 2.0), rint(-(halfIntLimit + 1.5)))
-    assertSameDouble(-(intLimit - 2.0), rint(-(intLimit - 1.5)))
-    assertSameDouble(-(intLimit - 1.0), rint(-(intLimit - 1.0)))
-    assertSameDouble(-intLimit, rint(-(intLimit - 0.5)))
-    assertSameDouble(-intLimit, rint(-intLimit))
+    test(-0.0, -Double.MinPositiveValue)
+    test(-0.0, -java.lang.Double.MIN_NORMAL)
+    test(-0.0, -0.1)
+    test(-0.0, -0.5)
+    test(-1.0, -0.5000000000000001)
+    test(-1.0, -0.999)
+    test(-1.0, -1.4999999999999998)
+    test(-2.0, -1.5)
+    test(-2.0, -2.0)
+    test(-2.0, -2.1)
+    test(-2.0, -2.5)
+    test(-3.0, -2.75)
+    test(-3.0, -3.25)
+    test(-4.0, -3.5)
+    test(-4.0, -3.75)
+    test(-(halfIntLimit - 2.0), -(halfIntLimit - 1.5))
+    test(-(halfIntLimit - 1.0), -(halfIntLimit - 1.25))
+    test(-(halfIntLimit - 1.0), -(halfIntLimit - 1.0))
+    test(-(halfIntLimit - 1.0), -(halfIntLimit - 0.75))
+    test(-halfIntLimit, -(halfIntLimit - 0.5))
+    test(-halfIntLimit, -(halfIntLimit - 0.25))
+    test(-halfIntLimit, -halfIntLimit)
+    test(-halfIntLimit, -(halfIntLimit + 0.25))
+    test(-halfIntLimit, -(halfIntLimit + 0.5))
+    test(-(halfIntLimit + 1.0), -(halfIntLimit + 0.75))
+    test(-(halfIntLimit + 1.0), -(halfIntLimit + 1.0))
+    test(-(halfIntLimit + 1.0), -(halfIntLimit + 1.25))
+    test(-(halfIntLimit + 2.0), -(halfIntLimit + 1.5))
+    test(-(intLimit - 2.0), -(intLimit - 1.5))
+    test(-(intLimit - 1.0), -(intLimit - 1.0))
+    test(-intLimit, -(intLimit - 0.5))
+    test(-intLimit, -intLimit)
 
     for (x <- largeIntegers)
-      assertSameDouble(-x, rint(-x))
+      test(-x, -x)
   }
 
   @Test def roundForDouble(): Unit = {

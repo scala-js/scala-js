@@ -3410,12 +3410,30 @@ private[optimizer] abstract class OptimizerCore(
         }(cont)
 
       case MathRint =>
-        contTree(wasmUnaryOp(WasmUnaryOp.F64Nearest, targs.head))
+        val List(targ) = targs
+        targ match {
+          case PreTransLit(DoubleLiteral(x)) =>
+            contTree(DoubleLiteral(Math.rint(x)))
+          case _ =>
+            contTree(wasmUnaryOp(WasmUnaryOp.F64Nearest, targ))
+        }
 
       case MathCopySignFloat =>
-        contTree(wasmBinaryOp(WasmBinaryOp.F32Copysign, targs.head, targs.tail.head))
+        val List(tlhs, trhs) = targs
+        (tlhs, trhs) match {
+          case (PreTransLit(FloatLiteral(x)), PreTransLit(FloatLiteral(y))) =>
+            contTree(FloatLiteral(Math.copySign(x, y)))
+          case _ =>
+            contTree(wasmBinaryOp(WasmBinaryOp.F32Copysign, tlhs, trhs))
+        }
       case MathCopySignDouble =>
-        contTree(wasmBinaryOp(WasmBinaryOp.F64Copysign, targs.head, targs.tail.head))
+        val List(tlhs, trhs) = targs
+        (tlhs, trhs) match {
+          case (PreTransLit(DoubleLiteral(x)), PreTransLit(DoubleLiteral(y))) =>
+            contTree(DoubleLiteral(Math.copySign(x, y)))
+          case _ =>
+            contTree(wasmBinaryOp(WasmBinaryOp.F64Copysign, tlhs, trhs))
+        }
 
       case MathMultiplyFull =>
         def expand(targs: List[PreTransform]): TailRec[Tree] = {
