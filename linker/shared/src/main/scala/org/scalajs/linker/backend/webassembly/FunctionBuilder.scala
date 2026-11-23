@@ -143,6 +143,20 @@ final class FunctionBuilder(
   def insertAll(index: InstructionIndex, instrs: List[Instr]): Unit =
     this.instrs.insertAll(index.value, instrs)
 
+  /** Semantically add an `I32Eqz`, but tries to fold it into the last instruction. */
+  def addBooleanNot(): Unit = {
+    val replacement = instrs.last match {
+      case I32Const(v)       => I32Const(if (v == 0) 1 else 0)
+      case last: SimpleInstr => BoolInvertedInstrs.getOrElse(last, null)
+      case _                 => null
+    }
+
+    if (replacement == null)
+      instrs += I32Eqz
+    else
+      instrs(instrs.size - 1) = replacement
+  }
+
   // Helpers to build structured control flow
 
   def sigToBlockType(sig: FunctionType): BlockType = sig match {
@@ -445,4 +459,36 @@ object FunctionBuilder {
         BlockType.ValueType(value)
     }
   }
+
+  private val BoolInvertedInstrs: Map[SimpleInstr, SimpleInstr] = Map(
+    I32Eq -> I32Ne,
+    I32Ne -> I32Eq,
+    I32LtS -> I32GeS,
+    I32LtU -> I32GeU,
+    I32GtS -> I32LeS,
+    I32GtU -> I32LeU,
+    I32LeS -> I32GtS,
+    I32LeU -> I32GtU,
+    I32GeS -> I32LtS,
+    I32GeU -> I32GtU,
+
+    I64Eq -> I64Ne,
+    I64Ne -> I64Eq,
+    I64LtS -> I64GeS,
+    I64LtU -> I64GeU,
+    I64GtS -> I64LeS,
+    I64GtU -> I64LeU,
+    I64LeS -> I64GtS,
+    I64LeU -> I64GtU,
+    I64GeS -> I64LtS,
+    I64GeU -> I64GtU,
+
+    // reminder: floating-point inequalities are *not* opposite of each other
+
+    F32Eq -> F32Ne,
+    F32Ne -> F32Eq,
+
+    F64Eq -> F64Ne,
+    F64Ne -> F64Eq
+  )
 }

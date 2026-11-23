@@ -136,7 +136,9 @@ object VarGen {
      */
     sealed abstract class JSHelperFunctionID extends FunctionID
 
-    case object is extends JSHelperFunctionID
+    case object sameAnyAnyFallback extends JSHelperFunctionID
+    case object sameDoubleAnyFallback extends JSHelperFunctionID
+    case object sameIntAnyFallback extends JSHelperFunctionID
 
     case object isUndef extends JSHelperFunctionID
 
@@ -216,6 +218,17 @@ object VarGen {
     case object anyGetTypeData extends FunctionID
     case object identityHashCode extends FunctionID
     case object searchReflectiveProxy extends FunctionID
+
+    // Implementation of === for several combinations of types
+    case object sameFloatFloat extends FunctionID
+    case object sameDoubleDouble extends FunctionID
+    case object sameDoubleAny extends FunctionID
+    case object sameAnyDouble extends FunctionID
+    case object sameIntAny extends FunctionID
+    case object sameAnyInt extends FunctionID
+    case object sameStringAny extends FunctionID
+    case object sameAnyString extends FunctionID
+    case object sameAnyAny extends FunctionID
 
     private final case class SpecializedArrayCopyID(arrayBaseRef: NonArrayTypeRef)
         extends FunctionID

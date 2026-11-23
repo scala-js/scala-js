@@ -133,6 +133,8 @@ object TypeTransformer {
       case Some(info) =>
         if (className == BoxedStringClass)
           ctx.stringType.heapType
+        else if (!ctx.hasJSInterop && (className == BoxedBooleanClass || className == BoxedUnitClass))
+          watpe.HeapType(genTypeID.forClass(className))
         else if (info.isAncestorOfHijackedClass && !exact)
           watpe.HeapType.Any
         else if (!info.hasInstances)
@@ -151,7 +153,12 @@ object TypeTransformer {
 
   def transformPrimType(tpe: PrimType)(implicit ctx: WasmBaseContext): watpe.Type = {
     tpe match {
-      case UndefType   => watpe.RefType.any
+      case UndefType =>
+        if (ctx.hasJSInterop)
+          watpe.RefType.any
+        else
+          watpe.RefType(genTypeID.forClass(BoxedUnitClass))
+
       case BooleanType => watpe.Int32
       case ByteType    => watpe.Int32
       case ShortType   => watpe.Int32

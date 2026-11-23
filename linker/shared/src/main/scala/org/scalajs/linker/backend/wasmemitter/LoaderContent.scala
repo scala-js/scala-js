@@ -76,8 +76,10 @@ const scalaJSHelpers = {
   // JSTag
   JSTag: WebAssembly.JSTag,
 
-  // BinaryOp.===
-  is: Object.is,
+  // Fallback for BinaryOp.=== with several signatures
+  sameAnyAnyFallback: Object.is,
+  sameDoubleAnyFallback: Object.is,
+  sameIntAnyFallback: Object.is,
 
   // undefined
   undef: void 0,
