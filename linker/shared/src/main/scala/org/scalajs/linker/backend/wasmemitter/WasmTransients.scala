@@ -52,9 +52,18 @@ object WasmTransients {
       case I64Ctz    => wa.I64Ctz
       case I64Popcnt => wa.I64Popcnt
 
+      case F32Ceil    => wa.F32Ceil
+      case F32Floor   => wa.F32Floor
+      case F32Nearest => wa.F32Nearest
+      case F32Sqrt    => wa.F32Sqrt
+
       case F64Nearest => wa.F64Nearest
 
+      case F32ConvertI32S => wa.F32ConvertI32S
       case F64ConvertI32U => wa.F64ConvertI32U
+
+      case I32TruncSatF32S => wa.I32TruncSatF32S
+      case I64TruncSatF32S => wa.I64TruncSatF32S
     }
 
     def printIR(out: IRTreePrinter): Unit = {
@@ -75,16 +84,28 @@ object WasmTransients {
     final val I64Ctz = 3
     final val I64Popcnt = 4
 
-    final val F64Nearest = 5
+    final val F32Ceil = 5
+    final val F32Floor = 6
+    final val F32Nearest = 7
+    final val F32Sqrt = 8
 
-    final val F64ConvertI32U = 6
+    final val F64Nearest = 9
+
+    final val F32ConvertI32S = 10
+    final val F64ConvertI32U = 11
+
+    final val I32TruncSatF32S = 12
+    final val I64TruncSatF32S = 13
 
     def resultTypeOf(op: Code): Type = (op: @switch) match {
-      case I32Ctz | I32Popcnt =>
+      case I32Ctz | I32Popcnt | I32TruncSatF32S =>
         IntType
 
-      case I64Ctz | I64Popcnt =>
+      case I64Ctz | I64Popcnt | I64TruncSatF32S =>
         LongType
+
+      case F32Ceil | F32Floor | F32Nearest | F32Sqrt | F32ConvertI32S =>
+        FloatType
 
       case F64Nearest | F64ConvertI32U =>
         DoubleType

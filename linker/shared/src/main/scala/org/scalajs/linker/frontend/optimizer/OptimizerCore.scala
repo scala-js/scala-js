@@ -3414,6 +3414,10 @@ private[optimizer] abstract class OptimizerCore(
         targ match {
           case PreTransLit(DoubleLiteral(x)) =>
             contTree(DoubleLiteral(Math.rint(x)))
+          case PreTransUnaryOp(UnaryOp.FloatToDouble, x) =>
+            // Swap the operations to use F32Nearest; see also foldUnaryOp on floor/ceil
+            cont(PreTransUnaryOp(UnaryOp.FloatToDouble,
+                PreTransTree(wasmUnaryOp(WasmUnaryOp.F32Nearest, x))))
           case _ =>
             contTree(wasmUnaryOp(WasmUnaryOp.F64Nearest, targ))
         }
@@ -4193,6 +4197,9 @@ private[optimizer] abstract class OptimizerCore(
 
     @inline def default = PreTransUnaryOp(op, arg)
 
+    def wasmUnaryOp(op: WasmUnaryOp.Code, lhs: PreTransform): PreTransTree =
+      PreTransTree(Transient(WasmUnaryOp(op, finishTransformExpr(lhs))))
+
     (op: @switch) match {
       case Boolean_! =>
         arg match {
@@ -4330,15 +4337,36 @@ private[optimizer] abstract class OptimizerCore(
             PreTransLit(IntLiteral(v.toInt))
           case PreTransUnaryOp(IntToDouble, x) =>
             x
+          case PreTransUnaryOp(FloatToDouble, x) if isWasm =>
+            wasmUnaryOp(WasmUnaryOp.I32TruncSatF32S, x)
           case _ =>
             default
         }
+
       case DoubleToFloat =>
         arg match {
           case PreTransLit(DoubleLiteral(v)) =>
             PreTransLit(FloatLiteral(v.toFloat))
           case PreTransUnaryOp(FloatToDouble, x) =>
             x
+          case PreTransUnaryOp(IntToDouble, x) if isWasm =>
+            wasmUnaryOp(WasmUnaryOp.F32ConvertI32S, x)
+          case PreTransUnaryOp(Double_sqrt, PreTransUnaryOp(FloatToDouble, x)) if isWasm =>
+            /* Fold the whole thing to `f32.sqrt`. The paper
+             *   When is Double Rounding Innocuous?
+             *   Samuel A. Figueroa. 1995. SIGNUM Newsl. 30, 3 (July 1995), 21–26.
+             *   https://doi.org/10.1145/221332.221334
+             * shows that using double-precision to compute the square root then
+             * rounding back down is "innocuous" (i.e., identical to performing
+             * the square root in single precision) if the number of bits in
+             * double precision is at least 2p+2, where p is the number of bits
+             * in single precision.
+             * Since 53 >= 2*24+2, we can apply that result.
+             * FYI, this is the same paper that justifies implementing elementary
+             * single-precision float arithmetic using `Math.fround(a + b)` in
+             * the JavaScript backend.
+             */
+            wasmUnaryOp(WasmUnaryOp.F32Sqrt, x)
           case _ =>
             default
         }
@@ -4378,6 +4406,8 @@ private[optimizer] abstract class OptimizerCore(
             PreTransLit(LongLiteral(v.toLong))
           case PreTransUnaryOp(IntToDouble, x) =>
             foldUnaryOp(IntToLong, x)
+          case PreTransUnaryOp(FloatToDouble, x) if isWasm =>
+            wasmUnaryOp(WasmUnaryOp.I64TruncSatF32S, x)
           case _ =>
             default
         }
@@ -4558,16 +4588,35 @@ private[optimizer] abstract class OptimizerCore(
           case PreTransLit(DoubleLiteral(v)) => PreTransLit(DoubleLiteral(Math.abs(v)))
           case _                             => default
         }
+
       case Double_floor =>
         arg match {
-          case PreTransLit(DoubleLiteral(v)) => PreTransLit(DoubleLiteral(Math.floor(v)))
-          case _                             => default
+          case PreTransLit(DoubleLiteral(v)) =>
+            PreTransLit(DoubleLiteral(Math.floor(v)))
+          case PreTransUnaryOp(UnaryOp.FloatToDouble, x) if isWasm =>
+            /* Swap the operations to use a Wasm f32.floor.
+             * We can do that because floor is always exact.
+             * This is particularly useful when directly followed by a conversion
+             * in the other direction (DoubleToFloat), as the folding will then
+             * get rid of the chain FloatToDouble -> DoubleToFloat altogether.
+             */
+            PreTransUnaryOp(UnaryOp.FloatToDouble,
+                wasmUnaryOp(WasmUnaryOp.F32Floor, x))
+          case _ =>
+            default
         }
       case Double_ceil =>
         arg match {
-          case PreTransLit(DoubleLiteral(v)) => PreTransLit(DoubleLiteral(Math.ceil(v)))
-          case _                             => default
+          case PreTransLit(DoubleLiteral(v)) =>
+            PreTransLit(DoubleLiteral(Math.ceil(v)))
+          case PreTransUnaryOp(UnaryOp.FloatToDouble, x) if isWasm =>
+            // Same justification as above for floor
+            PreTransUnaryOp(UnaryOp.FloatToDouble,
+                wasmUnaryOp(WasmUnaryOp.F32Ceil, x))
+          case _ =>
+            default
         }
+
       case Double_sqrt =>
         arg match {
           case PreTransLit(DoubleLiteral(v)) => PreTransLit(DoubleLiteral(Math.sqrt(v)))

@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
-import java.lang.{Double => JDouble}
+import java.lang.{Double => JDouble, Float => JFloat}
 import java.lang.Math
 
 // Imported under different names for historical reasons
@@ -277,6 +277,60 @@ class MathTest {
     test(-4503599627370497.0, fromBits(0xc330000000000001L))
   }
 
+  @Test def floorForFloat(): Unit = {
+    // Math.floor(float.toDouble).toFloat is subject to an optimization
+
+    @inline def floatFloor(x: Float): Float = Math.floor(x.toDouble).toFloat
+
+    @noinline def fromBits(bits: Int): Float = JFloat.intBitsToFloat(bits)
+
+    @noinline def testNoinline(expected: Float, arg: Float): Unit =
+      assertSameFloat(expected, floatFloor(arg))
+
+    @inline def test(expected: Float, arg: Float): Unit = {
+      testNoinline(expected, arg)
+      assertSameFloat(expected, floatFloor(arg))
+    }
+
+    // Specials
+    test(0.0f, 0.0f)
+    test(-0.0f, -0.0f)
+    test(Float.PositiveInfinity, Float.PositiveInfinity)
+    test(Float.NegativeInfinity, Float.NegativeInfinity)
+    test(Float.NaN, Float.NaN)
+
+    // Basic cases
+    test(5.0f, 5.0f)
+    test(5.0f, 5.7f)
+    test(-6.0f, -5.7f)
+    test(0.0f, 0.5f)
+    test(-1.0f, -0.5f)
+
+    // Exponent = 15, 2^15 = 32768
+    test(32767.0f, fromBits(0x46ffffff))
+    test(32768.0f, fromBits(0x47000000))
+    test(32768.0f, fromBits(0x47000001))
+    test(-32769.0f, fromBits(0xc7000001))
+
+    // Exponent = 16, 2^16 = 65536
+    test(65535.0f, fromBits(0x477fffff))
+    test(65536.0f, fromBits(0x47800000))
+    test(65536.0f, fromBits(0x47800001))
+    test(-65537.0f, fromBits(0xc7800001))
+
+    // Exponent = 22, 2^22 = 4194304
+    test(4194303.0f, fromBits(0x4a7fffff))
+    test(4194304.0f, fromBits(0x4a800000))
+    test(4194304.0f, fromBits(0x4a800001))
+    test(-4194305.0f, fromBits(0xca800001))
+
+    // Exponent = 23. All values are exact integers beyond this point.
+    test(8388608.0f, fromBits(0x4b000000))
+    test(8388609.0f, fromBits(0x4b000001))
+    test(-8388608.0f, fromBits(0xcb000000))
+    test(-8388609.0f, fromBits(0xcb000001))
+  }
+
   @Test def ceil(): Unit = {
     @noinline def fromBits(bits: Long): Double = JDouble.longBitsToDouble(bits)
 
@@ -324,6 +378,60 @@ class MathTest {
     test(-4503599627370497.0, fromBits(0xc330000000000001L))
   }
 
+  @Test def ceilForFloat(): Unit = {
+    // Math.ceil(float.toDouble).toFloat is subject to an optimization
+
+    @inline def floatCeil(x: Float): Float = Math.ceil(x.toDouble).toFloat
+
+    @noinline def fromBits(bits: Int): Float = JFloat.intBitsToFloat(bits)
+
+    @noinline def testNoinline(expected: Float, arg: Float): Unit =
+      assertSameFloat(expected, floatCeil(arg))
+
+    @inline def test(expected: Float, arg: Float): Unit = {
+      testNoinline(expected, arg)
+      assertSameFloat(expected, floatCeil(arg))
+    }
+
+    // Specials
+    test(0.0f, 0.0f)
+    test(-0.0f, -0.0f)
+    test(Float.PositiveInfinity, Float.PositiveInfinity)
+    test(Float.NegativeInfinity, Float.NegativeInfinity)
+    test(Float.NaN, Float.NaN)
+
+    // Basic cases
+    test(5.0f, 5.0f)
+    test(6.0f, 5.7f)
+    test(-5.0f, -5.7f)
+    test(1.0f, 0.5f)
+    test(-0.0f, -0.5f)
+
+    // Exponent = 15, 2^15 = 32768
+    test(32768.0f, fromBits(0x46ffffff))
+    test(32768.0f, fromBits(0x47000000))
+    test(32769.0f, fromBits(0x47000001))
+    test(-32768.0f, fromBits(0xc7000001))
+
+    // Exponent = 16, 2^16 = 65536
+    test(65536.0f, fromBits(0x477fffff))
+    test(65536.0f, fromBits(0x47800000))
+    test(65537.0f, fromBits(0x47800001))
+    test(-65536.0f, fromBits(0xc7800001))
+
+    // Exponent = 22, 2^22 = 4194304
+    test(4194304.0f, fromBits(0x4a7fffff))
+    test(4194304.0f, fromBits(0x4a800000))
+    test(4194305.0f, fromBits(0x4a800001))
+    test(-4194304.0f, fromBits(0xca800001))
+
+    // Exponent = 23. All values are exact integers beyond this point.
+    test(8388608.0f, fromBits(0x4b000000))
+    test(8388609.0f, fromBits(0x4b000001))
+    test(-8388608.0f, fromBits(0xcb000000))
+    test(-8388609.0f, fromBits(0xcb000001))
+  }
+
   @Test def sqrt(): Unit = {
     @noinline def testNoinline(expected: Double, arg: Double): Unit =
       assertSameDouble(expected, Math.sqrt(arg))
@@ -361,6 +469,49 @@ class MathTest {
     test(Double.NaN, -Double.MinPositiveValue)
     test(Double.NaN, Double.MinValue)
     test(Double.NaN, -5.0)
+  }
+
+  @Test def sqrtForFloat(): Unit = {
+    // Math.sqrt(float.toDouble).toFloat is subject to an optimization
+
+    @inline def floatSqrt(x: Float): Float = Math.sqrt(x.toDouble).toFloat
+
+    @noinline def testNoinline(expected: Float, arg: Float): Unit =
+      assertSameFloat(expected, floatSqrt(arg))
+
+    @inline def test(expected: Float, arg: Float): Unit = {
+      testNoinline(expected, arg)
+      assertSameFloat(expected, floatSqrt(arg))
+    }
+
+    // Specials
+    test(0.0f, 0.0f)
+    test(-0.0f, -0.0f)
+    test(Float.PositiveInfinity, Float.PositiveInfinity)
+    test(Float.NaN, Float.NegativeInfinity)
+    test(Float.NaN, Float.NaN)
+
+    // Basic cases
+    test(1.467785e-6f, 2.1543928e-12f)
+    test(3.718628e-15f, 1.3828194e-29f)
+    test(4.1577532e-13f, 1.7286913e-25f)
+    test(474892.8f, 2.25523171e11f)
+    test(5.1487678e-8f, 2.650981e-15f)
+    test(7.4896282e8f, 5.60945338e17f)
+    test(4.1672856e-11f, 1.736627e-21f)
+    test(1.092528e-4f, 1.1936173e-8f)
+    test(5.1608409e16f, 2.6634277e33f)
+    test(1.97523517e10f, 3.9015542e20f)
+    test(1.21929882e9f, 1.48668953e18f)
+    test(1.221521e-14f, 1.4921137e-28f)
+    test(3.1667793e-10f, 1.0028491e-19f)
+    test(2.3522372f, 5.53302f)
+    test(5.047151f, 25.473732f)
+
+    // Negatives
+    test(Float.NaN, -Float.MinPositiveValue)
+    test(Float.NaN, Float.MinValue)
+    test(Float.NaN, -5.0f)
   }
 
   @Test def cbrt(): Unit = linkTimeIf(moduleKind == WasmModule) {
@@ -932,6 +1083,126 @@ class MathTest {
     test(-(intLimit - 2.0), -(intLimit - 1.5))
     test(-(intLimit - 1.0), -(intLimit - 1.0))
     test(-intLimit, -(intLimit - 0.5))
+    test(-intLimit, -intLimit)
+
+    for (x <- largeIntegers)
+      test(-x, -x)
+  }
+
+  @Test def rintForFloat(): Unit = {
+    // Math.rint(float.toDouble).toFloat is subject to an optimization
+
+    @inline def floatRint(x: Float): Float = Math.rint(x.toDouble).toFloat
+
+    @noinline
+    def testNoInline(expected: Float, value: Float): Unit =
+      assertSameFloat(expected, floatRint(value))
+
+    @inline
+    def test(expected: Float, value: Float): Unit = {
+      testNoInline(expected, value)
+      assertSameFloat(expected, floatRint(value))
+    }
+
+    val intLimit = 1 << 23
+    val halfIntLimit = 1 << 22
+    val doubleIntLimit = 1 << 24
+
+    // Specials
+    test(+0.0f, +0.0f)
+    test(-0.0f, -0.0f)
+    test(Float.PositiveInfinity, Float.PositiveInfinity)
+    test(Float.NegativeInfinity, Float.NegativeInfinity)
+    test(Float.NaN, Float.NaN)
+
+    // Positive values
+    test(+0.0f, Float.MinPositiveValue)
+    test(+0.0f, java.lang.Float.MIN_NORMAL)
+    test(+0.0f, 0.1f)
+    test(+0.0f, 0.5f)
+    test(1.0f, 0.50000006f)
+    test(1.0f, 0.999f)
+    test(1.0f, 1.4999999f)
+    test(2.0f, 1.5f)
+    test(2.0f, 2.0f)
+    test(2.0f, 2.1f)
+    test(2.0f, 2.5f)
+    test(3.0f, 2.75f)
+    test(3.0f, 3.25f)
+    test(4.0f, 3.5f)
+    test(4.0f, 3.75f)
+    test(halfIntLimit - 2.0f, halfIntLimit - 1.5f)
+    test(halfIntLimit - 1.0f, halfIntLimit - 1.25f)
+    test(halfIntLimit - 1.0f, halfIntLimit - 1.0f)
+    test(halfIntLimit - 1.0f, halfIntLimit - 0.75f)
+    test(halfIntLimit, halfIntLimit - 0.5f)
+    test(halfIntLimit, halfIntLimit - 0.25f)
+    test(halfIntLimit, halfIntLimit)
+    test(halfIntLimit, halfIntLimit + 0.25f)
+    test(halfIntLimit, halfIntLimit + 0.5f)
+    test(halfIntLimit + 1.0f, halfIntLimit + 0.75f)
+    test(halfIntLimit + 1.0f, halfIntLimit + 1.0f)
+    test(halfIntLimit + 1.0f, halfIntLimit + 1.25f)
+    test(halfIntLimit + 2.0f, halfIntLimit + 1.5f)
+    test(intLimit - 2.0f, intLimit - 1.5f)
+    test(intLimit - 1.0f, intLimit - 1.0f)
+    test(intLimit, intLimit - 0.5f)
+    test(intLimit, intLimit)
+
+    val largeIntegers = List(
+      // corner cases just above intLimit
+      intLimit + 1.0f,
+      intLimit + 2.0f,
+      intLimit + 3.0f,
+      intLimit + 4.0f,
+      // corner cases around doubleIntLimit
+      doubleIntLimit - 4.0f,
+      doubleIntLimit - 3.0f,
+      doubleIntLimit - 2.0f,
+      doubleIntLimit - 1.0f,
+      doubleIntLimit,
+      doubleIntLimit + 2.0f,
+      doubleIntLimit + 4.0f,
+      doubleIntLimit + 6.0f,
+      doubleIntLimit + 8.0f,
+      doubleIntLimit + 16.0f,
+      Float.MaxValue
+    )
+    for (x <- largeIntegers)
+      test(x, x)
+
+    // Negative values
+    test(-0.0f, -Float.MinPositiveValue)
+    test(-0.0f, -java.lang.Float.MIN_NORMAL)
+    test(-0.0f, -0.1f)
+    test(-0.0f, -0.5f)
+    test(-1.0f, -0.50000006f)
+    test(-1.0f, -0.999f)
+    test(-1.0f, -1.4999999f)
+    test(-2.0f, -1.5f)
+    test(-2.0f, -2.0f)
+    test(-2.0f, -2.1f)
+    test(-2.0f, -2.5f)
+    test(-3.0f, -2.75f)
+    test(-3.0f, -3.25f)
+    test(-4.0f, -3.5f)
+    test(-4.0f, -3.75f)
+    test(-(halfIntLimit - 2.0f), -(halfIntLimit - 1.5f))
+    test(-(halfIntLimit - 1.0f), -(halfIntLimit - 1.25f))
+    test(-(halfIntLimit - 1.0f), -(halfIntLimit - 1.0f))
+    test(-(halfIntLimit - 1.0f), -(halfIntLimit - 0.75f))
+    test(-halfIntLimit, -(halfIntLimit - 0.5f))
+    test(-halfIntLimit, -(halfIntLimit - 0.25f))
+    test(-halfIntLimit, -halfIntLimit)
+    test(-halfIntLimit, -(halfIntLimit + 0.25f))
+    test(-halfIntLimit, -(halfIntLimit + 0.5f))
+    test(-(halfIntLimit + 1.0f), -(halfIntLimit + 0.75f))
+    test(-(halfIntLimit + 1.0f), -(halfIntLimit + 1.0f))
+    test(-(halfIntLimit + 1.0f), -(halfIntLimit + 1.25f))
+    test(-(halfIntLimit + 2.0f), -(halfIntLimit + 1.5f))
+    test(-(intLimit - 2.0f), -(intLimit - 1.5f))
+    test(-(intLimit - 1.0f), -(intLimit - 1.0f))
+    test(-intLimit, -(intLimit - 0.5f))
     test(-intLimit, -intLimit)
 
     for (x <- largeIntegers)

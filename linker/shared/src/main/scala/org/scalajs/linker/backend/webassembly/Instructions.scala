@@ -372,7 +372,9 @@ object Instructions {
 
   // Extended operations on primitive types
 
+  case object I32TruncSatF32S extends SimpleInstr("i32.trunc_sat_f32_s", 0xfc00)
   case object I32TruncSatF64S extends SimpleInstr("i32.trunc_sat_f64_s", 0xfc02)
+  case object I64TruncSatF32S extends SimpleInstr("i64.trunc_sat_f32_s", 0xfc04)
   case object I64TruncSatF64S extends SimpleInstr("i64.trunc_sat_f64_s", 0xfc06)
 
   // --- End of the instruction list ------------------------------------------
