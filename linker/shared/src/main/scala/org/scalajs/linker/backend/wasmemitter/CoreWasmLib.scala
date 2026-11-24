@@ -350,7 +350,10 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       )
     }
 
-    addHelperImport(genFunctionID.is, List(anyref, anyref), List(Int32))
+    addHelperImport(genFunctionID.sameAnyAnyFallback,
+        List(RefType.extern, RefType.extern), List(Int32))
+    addHelperImport(genFunctionID.sameDoubleAnyFallback, List(Float64, anyref), List(Int32))
+    addHelperImport(genFunctionID.sameIntAnyFallback, List(Int32, anyref), List(Int32))
 
     addHelperImport(genFunctionID.isUndef, List(anyref), List(Int32))
 
@@ -612,6 +615,9 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genAnyGetTypeData()
     genIdentityHashCode()
     genSearchReflectiveProxy()
+
+    genAllSameFunctions()
+
     genArrayCloneFunctions()
     genArrayCopyFunctions()
   }
@@ -627,14 +633,18 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
   }
 
   private def genBoxBoolean()(implicit ctx: WasmContext): Unit = {
+    val resultType =
+      if (hasJSInterop) RefType.any
+      else RefType(genTypeID.forClass(BoxedBooleanClass))
+
     val fb = newFunctionBuilder(genFunctionID.box(BooleanRef))
     val xParam = fb.addParam("x", Int32)
-    fb.setResultType(RefType.any)
+    fb.setResultType(resultType)
 
     fb += GlobalGet(genGlobalID.bTrue)
     fb += GlobalGet(genGlobalID.bFalse)
     fb += LocalGet(xParam)
-    fb += Select(List(RefType.any))
+    fb += Select(List(resultType))
 
     fb.buildAndAddToModule()
   }
@@ -2887,6 +2897,521 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     fb.buildAndAddToModule()
   }
 
+  private def genAllSameFunctions()(implicit ctx: WasmContext): Unit = {
+    genSameFloatFloat()
+    genSameDoubleDouble()
+    genSameDoubleAny()
+    genSameAnyDouble()
+    genSameIntAny()
+    genSameAnyInt()
+    genSameStringAny()
+    genSameAnyString()
+    genSameAnyAny()
+  }
+
+  /** `sameFloatFloat`: `[f32, f32] -> i32` (a boolean).
+   *
+   *  Tests whether two f32's are `===`, i.e., if they are both NaN's,
+   *  or their bit patterns are equal.
+   */
+  private def genSameFloatFloat()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.sameFloatFloat)
+    val xParam = fb.addParam("x", Float32)
+    val yParam = fb.addParam("y", Float32)
+    fb.setResultType(Int32)
+
+    // if (x is not NaN) -- predictably true
+    fb += LocalGet(xParam)
+    fb += LocalGet(xParam)
+    fb += F32Eq
+    fb.ifThenElse(Int32) {
+      // then, compare the bit patterns of x and y
+      fb += LocalGet(xParam)
+      fb += I32ReinterpretF32
+      fb += LocalGet(yParam)
+      fb += I32ReinterpretF32
+      fb += I32Eq
+    } {
+      // else, test if y is also NaN
+      fb += LocalGet(yParam)
+      fb += LocalGet(yParam)
+      fb += F32Ne
+    }
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `sameDoubleDouble`: `[f64, f64] -> i32` (a boolean).
+   *
+   *  Tests whether two f64's are `===`, i.e., if they are both NaN's,
+   *  or their bit patterns are equal.
+   */
+  private def genSameDoubleDouble()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.sameDoubleDouble)
+    val xParam = fb.addParam("x", Float64)
+    val yParam = fb.addParam("y", Float64)
+    fb.setResultType(Int32)
+
+    // if (x is not NaN) -- predictably true
+    fb += LocalGet(xParam)
+    fb += LocalGet(xParam)
+    fb += F64Eq
+    fb.ifThenElse(Int32) {
+      // then, compare the bit patterns of x and y
+      fb += LocalGet(xParam)
+      fb += I64ReinterpretF64
+      fb += LocalGet(yParam)
+      fb += I64ReinterpretF64
+      fb += I64Eq
+    } {
+      // else, test if y is also NaN
+      fb += LocalGet(yParam)
+      fb += LocalGet(yParam)
+      fb += F64Ne
+    }
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `sameDoubleAny`: `[f64, anyref] -> i32` (a boolean). */
+  private def genSameDoubleAny()(implicit ctx: WasmContext): Unit = {
+    if (hasJSInterop)
+      genSameDoubleAnyWithJS()
+    else
+      genSameDoubleAnyWithoutJS()
+  }
+
+  private def genSameDoubleAnyWithJS()(implicit ctx: WasmContext): Unit = {
+    assert(hasJSInterop)
+
+    val fb = newFunctionBuilder(genFunctionID.sameDoubleAny)
+    val xParam = fb.addParam("x", Float64)
+    val yParam = fb.addParam("y", anyref)
+    fb.setResultType(Int32)
+
+    /* There isn't much we can do from Wasm here. We only rule out values that
+     * are our objects.
+     */
+    fb += LocalGet(yParam)
+    fb += RefTest(RefType.nullable(genTypeID.ObjectStruct))
+    fb.ifThenElse(Int32) {
+      fb += I32Const(0)
+    } {
+      fb += LocalGet(xParam)
+      fb += LocalGet(yParam)
+      fb += Call(genFunctionID.sameDoubleAnyFallback)
+    }
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genSameDoubleAnyWithoutJS()(implicit ctx: WasmContext): Unit = {
+    assert(!hasJSInterop)
+
+    val doubleBoxTypeID = genTypeID.forClass(BoxedDoubleClass)
+    val doubleBoxType = RefType(doubleBoxTypeID)
+
+    val fb = newFunctionBuilder(genFunctionID.sameDoubleAny)
+    val xParam = fb.addParam("x", Float64)
+    val yParam = fb.addParam("y", anyref)
+    fb.setResultType(Int32)
+
+    // We have to test cases where b is an i31 or a DoubleBox
+    fb.block(doubleBoxType) { doubleBoxLabel =>
+      fb.block(RefType.i31) { i31Label =>
+        fb += LocalGet(yParam)
+        fb += BrOnCast(i31Label, RefType.anyref, RefType.i31)
+        fb += BrOnCast(doubleBoxLabel, RefType.anyref, doubleBoxType)
+
+        fb += I32Const(0)
+        fb += Return
+      }
+
+      // i31 -- since it is an integer, no need to handle NaN
+
+      // Extract the value of y and get its bits
+      fb += I31GetS
+      fb += F64ConvertI32S
+      fb += I64ReinterpretF64
+
+      // Compare to the bits of x
+      fb += LocalGet(xParam)
+      fb += I64ReinterpretF64
+
+      fb += I64Eq
+      fb += Return
+    }
+
+    // y is a DoubleBox; extract is value
+    fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
+
+    // and compare using sameDoubleDouble
+    fb += LocalGet(xParam)
+    fb += ReturnCall(genFunctionID.sameDoubleDouble)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `sameAnyDouble`: `[anyref, f64] -> i32` (a boolean). */
+  private def genSameAnyDouble()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.sameAnyDouble)
+    val xParam = fb.addParam("x", anyref)
+    val yParam = fb.addParam("y", Float64)
+    fb.setResultType(Int32)
+
+    fb += LocalGet(yParam)
+    fb += LocalGet(xParam)
+    fb += ReturnCall(genFunctionID.sameDoubleAny)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `sameIntAny`: `[i32, anyref] -> i32` (a boolean). */
+  private def genSameIntAny()(implicit ctx: WasmContext): Unit = {
+    val doubleBoxTypeID = genTypeID.forClass(BoxedDoubleClass)
+    val doubleBoxType = RefType(doubleBoxTypeID)
+
+    val fb = newFunctionBuilder(genFunctionID.sameIntAny)
+    val xParam = fb.addParam("x", Int32)
+    val yParam = fb.addParam("y", anyref)
+    fb.setResultType(Int32)
+
+    // Test whether x fits in an i31: (x ^ (x << 1)) >= 0
+
+    fb += LocalGet(xParam)
+    fb += LocalGet(xParam)
+    fb += I32Const(1)
+    fb += I32Shl
+    fb += I32Xor
+    fb += I32Const(0)
+    fb += I32GeS
+
+    fb.ifThenElse(Int32) {
+      // If yes, then it depends whether we have JS interop or not
+      if (hasJSInterop) {
+        // With JS interop, the only case is when y is also an i31
+        fb.block(RefType.i31) { i31Label =>
+          fb += LocalGet(yParam)
+          fb += BrOnCast(i31Label, anyref, RefType.i31)
+
+          fb += I32Const(0)
+          fb += Return
+        }
+
+        fb += LocalGet(xParam)
+        fb += RefI31
+        fb += RefEq
+        fb += Return
+      } else {
+        // Without JS interop, y can be an i31 or a Double box
+        fb.block(doubleBoxType) { doubleBoxLabel =>
+          fb.block(RefType.i31) { i31Label =>
+            fb += LocalGet(yParam)
+            fb += BrOnCast(i31Label, anyref, RefType.i31)
+            fb += BrOnCast(doubleBoxLabel, anyref, doubleBoxType)
+
+            fb += I32Const(0)
+            fb += Return
+          }
+
+          // i31
+          fb += LocalGet(xParam)
+          fb += RefI31
+          fb += RefEq
+          fb += Return
+        }
+
+        // Double box - since x is an int, we do not need to handle NaN
+        fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
+        fb += I64ReinterpretF64
+        fb += LocalGet(xParam)
+        fb += F64ConvertI32S
+        fb += I64ReinterpretF64
+        fb += I64Eq
+      }
+    } {
+      // x does not fit in in i31
+
+      if (hasJSInterop) {
+        /* We need to delegate to a JS helper for the `true` case,
+         * but first let's rule out as much as we can.
+         * If we can cast y to eqref, then it cannot possibly be the given number.
+         */
+        fb += LocalGet(yParam)
+        fb += RefTest(RefType.eqref)
+        fb.ifThenElse(Int32) {
+          fb += I32Const(0)
+        } {
+          fb += LocalGet(xParam)
+          fb += LocalGet(yParam)
+          fb += Call(genFunctionID.sameIntAnyFallback)
+        }
+      } else {
+        // y can only be a double box in this case
+        fb.block(doubleBoxType) { doubleBoxLabel =>
+          fb += LocalGet(yParam)
+          fb += BrOnCast(doubleBoxLabel, anyref, doubleBoxType)
+
+          fb += I32Const(0)
+          fb += Return
+        }
+
+        // Double box - since x is an int, we do not need to handle NaN
+        fb += StructGet(doubleBoxTypeID, genFieldID.boxValue)
+        fb += I64ReinterpretF64
+        fb += LocalGet(xParam)
+        fb += F64ConvertI32S
+        fb += I64ReinterpretF64
+        fb += I64Eq
+      }
+    }
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `sameAnyInt`: `[anyref, i32] -> i32` (a boolean). */
+  private def genSameAnyInt()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.sameAnyInt)
+    val xParam = fb.addParam("x", anyref)
+    val yParam = fb.addParam("y", Int32)
+    fb.setResultType(Int32)
+
+    fb += LocalGet(yParam)
+    fb += LocalGet(xParam)
+    fb += ReturnCall(genFunctionID.sameIntAny)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `sameStringAny`: `[nullableString, anyref] -> i32` (a boolean). */
+  private def genSameStringAny()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.sameStringAny)
+    val xParam = fb.addParam("x", nullableStringType)
+    val yParam = fb.addParam("y", anyref)
+    fb.setResultType(Int32)
+
+    val xNonNull = fb.addLocal("xNonNull", stringType)
+
+    if (hasJSInterop) {
+      val yExtern = fb.addLocal("yExtern", RefType.externref)
+      fb += LocalGet(yParam)
+      fb += ExternConvertAny
+      fb += LocalTee(yExtern)
+      fb += Call(genFunctionID.stringBuiltins.test)
+      fb.ifThenElse(Int32) {
+        fb += LocalGet(yExtern)
+        fb += LocalGet(xParam)
+        fb += Call(genFunctionID.stringBuiltins.equals)
+      } {
+        // Maybe they are both null
+        fb += LocalGet(xParam)
+        fb += RefIsNull
+        fb += LocalGet(yParam)
+        fb += RefIsNull
+        fb += I32Or
+      }
+    } else {
+      // Without JS interop, try to cast y down to (ref null String)
+      fb.block(anyref) { notAStringLabel =>
+        fb += LocalGet(yParam)
+        fb += BrOnCastFail(notAStringLabel, anyref, nullableStringType)
+        fb += LocalGet(xParam)
+        fb += ReturnCall(genFunctionID.wasmString.stringEquals)
+      }
+
+      fb += Drop
+      fb += I32Const(0)
+    }
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `sameAnyString`: `[anyref, nullableString] -> i32` (a boolean). */
+  private def genSameAnyString()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.sameAnyString)
+    val xParam = fb.addParam("x", anyref)
+    val yParam = fb.addParam("y", nullableStringType)
+    fb.setResultType(Int32)
+
+    fb += LocalGet(yParam)
+    fb += LocalGet(xParam)
+    fb += ReturnCall(genFunctionID.sameStringAny)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `sameAnyAny`: `[anyref, anyref] -> i32` (a boolean).
+   *
+   *  General case of `x === y`.
+   */
+  private def genSameAnyAny()(implicit ctx: WasmContext): Unit = {
+    if (hasJSInterop)
+      genSameAnyAnyWithJS()
+    else
+      genSameAnyAnyWithoutJS()
+  }
+
+  private def genSameAnyAnyWithJS()(implicit ctx: WasmContext): Unit = {
+    assert(hasJSInterop)
+
+    val fb = newFunctionBuilder(genFunctionID.sameAnyAny)
+    val xParam = fb.addParam("x", anyref)
+    val yParam = fb.addParam("y", anyref)
+    fb.setResultType(Int32)
+
+    val xExtern = fb.addLocal("xExtern", RefType.extern)
+    val yExtern = fb.addLocal("yExtern", RefType.extern)
+
+    /* We could always delegate to the JS helper Object.is. However, we make
+     * extra effort to stay within Wasm if possible.
+     *
+     * - if both arguments are eqref, use ref.eq
+     * - if both are strings, use stringBuiltins.equals
+     * - if both are neither eqref nor strings, use Object.is
+     * - if they are not in the same "category", they cannot be ===
+     */
+
+    fb.block(RefType.anyref) { exactlyOneIsEqRefLabel =>
+      fb.block(RefType.any) { xNotEqRefLabel =>
+        fb += LocalGet(xParam)
+        fb += BrOnCastFail(xNotEqRefLabel, anyref, RefType.eqref)
+        fb += LocalGet(yParam)
+        fb += BrOnCastFail(exactlyOneIsEqRefLabel, anyref, RefType.eqref)
+
+        // Both are eqref -> use ref.eq
+        fb += RefEq
+        fb += Return
+      }
+
+      fb += LocalGet(yParam)
+      fb += BrOnCast(exactlyOneIsEqRefLabel, anyref, RefType.eqref)
+
+      // x and y are still on the stack as (ref any) -> convert to (ref extern)
+      fb += ExternConvertAny
+      fb += LocalSet(yExtern)
+      fb += ExternConvertAny
+      fb += LocalTee(xExtern)
+
+      // Test whether they are both strings
+      fb += Call(genFunctionID.stringBuiltins.test)
+      fb.ifThen() {
+        fb += LocalGet(yExtern)
+        fb += Call(genFunctionID.stringBuiltins.test)
+        fb.ifThenElse() {
+          // Both strings
+          fb += LocalGet(xExtern)
+          fb += LocalGet(yExtern)
+          fb += ReturnCall(genFunctionID.stringBuiltins.equals)
+        } {
+          // Different categories
+          fb += I32Const(0)
+          fb += Return
+        }
+      }
+
+      fb += LocalGet(yExtern)
+      fb += Call(genFunctionID.stringBuiltins.test)
+      fb.ifThen() {
+        // Different categories
+        fb += I32Const(0)
+        fb += Return
+      }
+
+      // Both are neither eqref nor strings -> use fallback
+      fb += LocalGet(xExtern)
+      fb += LocalGet(yExtern)
+      fb += ReturnCall(genFunctionID.sameAnyAnyFallback)
+    }
+    fb += Drop
+
+    // Exactly one of the operands is an eqref -> return false
+    fb += I32Const(0) // false
+    fb += Return
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genSameAnyAnyWithoutJS()(implicit ctx: WasmContext): Unit = {
+    assert(!hasJSInterop)
+
+    val fb = newFunctionBuilder(genFunctionID.sameAnyAny)
+    val aParam = fb.addParam("a", anyref)
+    val bParam = fb.addParam("b", anyref)
+    fb.setResultType(Int32)
+
+    val i31a = fb.addLocal("i31a", RefType.i31)
+
+    val doubleA = fb.addLocal("doubleA", Float64)
+    val doubleB = fb.addLocal("doubleB", Float64)
+
+    // In Wasm-without-JS, all our values are actually eqref, so first test ref.eq
+    fb += LocalGet(aParam)
+    fb += RefCast(RefType.eqref)
+    fb += LocalGet(bParam)
+    fb += RefCast(RefType.eqref)
+    fb += RefEq
+    fb.ifThen() {
+      fb += I32Const(1)
+      fb += Return
+    }
+
+    /* Otherwise, we have two cases to handle:
+     * - strings, which must be compared by content
+     * - numbers where at least one side is not an i31ref, which must be compared by value
+     */
+    fb.block(RefType.anyref) { resultIsFalse =>
+      fb.block(RefType.anyref) { notString =>
+        fb += LocalGet(aParam)
+        fb += BrOnCastFail(notString, RefType.anyref, stringType)
+        fb += LocalGet(bParam)
+        fb += BrOnCastFail(resultIsFalse, RefType.anyref, stringType)
+        fb += ReturnCall(genFunctionID.wasmString.stringEquals)
+      }
+      fb += Drop
+
+      val doubleBoxType = RefType(genTypeID.DoubleStruct)
+
+      fb.block(doubleBoxType) { aIsDoubleBox =>
+        fb += LocalGet(aParam)
+        fb += BrOnCast(aIsDoubleBox, RefType.anyref, doubleBoxType)
+        fb += BrOnCastFail(resultIsFalse, RefType.anyref, RefType.i31)
+
+        fb += LocalSet(i31a)
+
+        // When a is an i31, the only case left is when b is a DoubleBox
+        fb += LocalGet(bParam)
+        fb += BrOnCastFail(resultIsFalse, RefType.anyref, doubleBoxType)
+
+        // Extract the value of b and get its bits
+        fb += StructGet(genTypeID.DoubleStruct, genFieldID.boxValue)
+        fb += I64ReinterpretF64
+
+        // Extract the value of a, convert it to f64 and get its bits
+        fb += LocalGet(i31a)
+        fb += I31GetS
+        fb += F64ConvertI32S
+        fb += I64ReinterpretF64
+
+        // Test whether they are equal
+        fb += I64Eq
+        fb += Return
+      }
+
+      // a is DoubleBox; extract its value
+      fb += StructGet(genTypeID.DoubleStruct, genFieldID.boxValue)
+
+      // and compare with sameDoubleAny
+      fb += LocalGet(bParam)
+      fb += ReturnCall(genFunctionID.sameDoubleAny)
+    }
+
+    // return false
+    fb += Drop
+    fb += I32Const(0)
+
+    fb.buildAndAddToModule()
+  }
+
   /** `identityHashCode`: `anyref -> i32`.
    *
    *  This is the implementation of `IdentityHashCode`. It is also used to compute the `hashCode()`
@@ -3585,8 +4110,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
     genUnboxDouble()
     genTestFloat()
     genTestDouble()
-
-    genIs()
 
     val wasmArrayBaseRefs: List[PrimRef] = List(
       ByteRef,
@@ -4297,132 +4820,6 @@ final class CoreWasmLib(coreSpec: CoreSpec, globalInfo: LinkedGlobalInfo) {
       fb += Drop
       fb += I32Const(0)
     }
-
-    fb.buildAndAddToModule()
-  }
-
-  /** Emulate the `Object.is` implementation. */
-  private def genIs()(implicit ctx: WasmContext): Unit = {
-    assert(!hasJSInterop)
-
-    val fb = newFunctionBuilder(genFunctionID.is)
-    val aParam = fb.addParam("a", anyref)
-    val bParam = fb.addParam("b", anyref)
-    fb.setResultType(Int32)
-
-    val i31a = fb.addLocal("i31a", RefType.i31)
-
-    val doubleA = fb.addLocal("doubleA", Float64)
-    val doubleB = fb.addLocal("doubleB", Float64)
-
-    // In Wasm-without-JS, all our values are actually eqref, so first test ref.eq
-    fb += LocalGet(aParam)
-    fb += RefCast(RefType.eqref)
-    fb += LocalGet(bParam)
-    fb += RefCast(RefType.eqref)
-    fb += RefEq
-    fb.ifThen() {
-      fb += I32Const(1)
-      fb += Return
-    }
-
-    /* Otherwise, we have two cases to handle:
-     * - strings, which must be compared by content
-     * - numbers where at least one side is not an i31ref, which must be compared by value
-     */
-    fb.block(RefType.anyref) { resultIsFalse =>
-      fb.block(RefType.anyref) { notString =>
-        fb += LocalGet(aParam)
-        fb += BrOnCastFail(notString, RefType.anyref, stringType)
-        fb += LocalGet(bParam)
-        fb += BrOnCastFail(resultIsFalse, RefType.anyref, stringType)
-        fb += ReturnCall(genFunctionID.wasmString.stringEquals)
-      }
-      fb += Drop
-
-      val doubleBoxType = RefType(genTypeID.DoubleStruct)
-
-      fb.block(doubleBoxType) { aIsDoubleBox =>
-        fb += LocalGet(aParam)
-        fb += BrOnCast(aIsDoubleBox, RefType.anyref, doubleBoxType)
-        fb += BrOnCastFail(resultIsFalse, RefType.anyref, RefType.i31)
-
-        fb += LocalSet(i31a)
-
-        // When a is an i31, the only case left is when b is a DoubleBox
-        fb += LocalGet(bParam)
-        fb += BrOnCastFail(resultIsFalse, RefType.anyref, doubleBoxType)
-
-        // Extract the value of b and get its bits
-        fb += StructGet(genTypeID.DoubleStruct, genFieldID.boxValue)
-        fb += I64ReinterpretF64
-
-        // Extract the value of a, convert it to f64 and get its bits
-        fb += LocalGet(i31a)
-        fb += I31GetS
-        fb += F64ConvertI32S
-        fb += I64ReinterpretF64
-
-        // Test whether they are equal
-        fb += I64Eq
-        fb += Return
-      }
-
-      // a is DoubleBox; extract its value into doubleA
-      fb += StructGet(genTypeID.DoubleStruct, genFieldID.boxValue)
-      fb += LocalSet(doubleA)
-
-      // We have to test cases where b is an i31 or a DoubleBox
-      fb.block(doubleBoxType) { bIsDoubleBox =>
-        fb += LocalGet(bParam)
-        fb += BrOnCast(bIsDoubleBox, RefType.anyref, doubleBoxType)
-        fb += BrOnCastFail(resultIsFalse, RefType.anyref, RefType.i31)
-
-        // Extract the value of b, convert it to f64 and get its bits
-        fb += I31GetS
-        fb += F64ConvertI32S
-        fb += I64ReinterpretF64
-
-        // Compare to the bits of a
-        fb += LocalGet(doubleA)
-        fb += I64ReinterpretF64
-
-        fb += I64Eq
-        fb += Return
-      }
-
-      // b is also a DoubleBox; extract is value into doubleB
-      fb += StructGet(genTypeID.DoubleStruct, genFieldID.boxValue)
-      fb += LocalTee(doubleB)
-
-      /* Compare doubleA and doubleB.
-       * Special cases: +0.0 !== -0.0; NaN === NaN
-       */
-      fb += LocalGet(doubleA)
-      fb += F64Eq
-      fb.ifThenElse(Int32) {
-        // bit pattern equality to refect -0.0 vs 0.0
-        fb += LocalGet(doubleA)
-        fb += I64ReinterpretF64
-        fb += LocalGet(doubleB)
-        fb += I64ReinterpretF64
-        fb += I64Eq
-      } {
-        // NaN vs Nan => true
-        fb += LocalGet(doubleA)
-        fb += LocalGet(doubleA)
-        fb += F64Ne
-        fb += LocalGet(doubleB)
-        fb += LocalGet(doubleB)
-        fb += F64Ne
-        fb += I32And
-      }
-      fb += Return
-    }
-
-    // return false
-    fb += Drop
-    fb += I32Const(0)
 
     fb.buildAndAddToModule()
   }

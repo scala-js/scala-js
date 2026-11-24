@@ -4617,6 +4617,43 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
+  /** Folds `lhs === rhs`. */
+  private def fold_===(lhs: PreTransform, rhs: PreTransform)(
+      implicit pos: Position): PreTransform = {
+
+    def isAnyIntType(tpe: Type): Boolean =
+      tpe == ByteType || tpe == ShortType || tpe == IntType
+
+    def foldConvertToInt(arg: PreTransform): PreTransform = (arg.tpe.base: @unchecked) match {
+      case ByteType  => foldUnaryOp(UnaryOp.ByteToInt, arg)
+      case ShortType => foldUnaryOp(UnaryOp.ShortToInt, arg)
+      case IntType   => arg
+    }
+
+    (lhs, rhs) match {
+      case (PreTransLit(l), PreTransLit(r)) =>
+        PreTransLit(BooleanLiteral(literal_===(l, r)))
+      case (PreTransLit(_), _) =>
+        fold_===(rhs, lhs)
+
+      case (_, PreTransLit(Null())) if !lhs.tpe.isNullable =>
+        Block(
+            finishTransformStat(lhs),
+            BooleanLiteral(false)).toPreTransform
+
+      // replace by Int_== if both arguments are primitive integer types
+      case _ if isAnyIntType(lhs.tpe.base) && isAnyIntType(rhs.tpe.base) =>
+        foldBinaryOp(BinaryOp.Int_==, foldConvertToInt(lhs), foldConvertToInt(rhs))
+
+      // replace by Boolean_== if both arguments are primitive booleans
+      case _ if lhs.tpe.base == BooleanType && rhs.tpe.base == BooleanType =>
+        foldBinaryOp(BinaryOp.Boolean_==, lhs, rhs)
+
+      case _ =>
+        PreTransBinaryOp(BinaryOp.===, lhs, rhs)
+    }
+  }
+
   /** Performs === for two literals.
    *  The result is always known statically.
    *
@@ -4709,22 +4746,10 @@ private[optimizer] abstract class OptimizerCore(
       PreTransLit(DoubleLiteral(value))
 
     (op: @switch) match {
-      case === | !== =>
-        (lhs, rhs) match {
-          case (PreTransLit(l), PreTransLit(r)) =>
-            val isSame = literal_===(l, r)
-            PreTransLit(BooleanLiteral(if (op == ===) isSame else !isSame))
-          case (PreTransLit(_), _) =>
-            foldBinaryOp(op, rhs, lhs)
-
-          case (_, PreTransLit(Null())) if !lhs.tpe.isNullable =>
-            Block(
-                finishTransformStat(lhs),
-                BooleanLiteral(op == !==)).toPreTransform
-
-          case _ =>
-            default
-        }
+      case === =>
+        fold_===(lhs, rhs)
+      case !== =>
+        foldNot(fold_===(lhs, rhs))
 
       case String_+ =>
         (lhs, rhs) match {
